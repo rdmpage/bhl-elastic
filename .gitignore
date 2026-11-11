@@ -1,0 +1,9 @@
+.DS_Store
+bhl.db
+bhl.db-*
+env.php
+cache/
+
+# Keep the bhldata folder and its provenance file, ignore the dumps themselves
+bhldata/*
+!bhldata/last-updated.txt
