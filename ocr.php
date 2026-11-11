@@ -198,7 +198,8 @@ function ocr_parse_path($path)
 // name, so the brackets go and the text stays.
 function ocr_clean($text)
 {
-	$text = str_replace("\r\n", "\n", $text);
+	// Lines end in CRLF, but some files (e.g. item 20388) have CR CR LF.
+	$text = preg_replace('/\r+\n?/', "\n", $text);
 
 	$text = preg_replace('/\[\[strike\]\].*?\[\[\/?strike\]\]/is', ' ', $text);
 

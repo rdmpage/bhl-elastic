@@ -26,6 +26,7 @@
       "issue":        { "type": "keyword" },
       "text":            { "type": "text", "analyzer": "folding", "index_options": "offsets" },
       "thumbnail":       { "type": "keyword", "index": false, "doc_values": false },
+      "links":           { "type": "rank_feature" },
       "locations":       { "type": "geo_point" },
       "geo_annotations": { "type": "object", "enabled": false }
     }
