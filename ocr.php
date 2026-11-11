@@ -93,6 +93,9 @@ function tar_entries($handle, $want = null)
 			continue;
 		}
 
+		// Regular files only. The 20260514 archive has 574 zero-size entries that repeat
+		// an earlier page's path (most likely hard links back to it); skipping them keeps
+		// the real text.
 		$is_file = ($type == '0' || $type == "\0" || $type == '');
 
 		if ($is_file && ($want === null || $want($name)))

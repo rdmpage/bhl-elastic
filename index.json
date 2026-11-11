@@ -25,6 +25,7 @@
       "volume":       { "type": "keyword" },
       "issue":        { "type": "keyword" },
       "text":            { "type": "text", "analyzer": "folding", "index_options": "offsets" },
+      "thumbnail":       { "type": "keyword", "index": false, "doc_values": false },
       "locations":       { "type": "geo_point" },
       "geo_annotations": { "type": "object", "enabled": false }
     }

@@ -32,6 +32,7 @@
 require_once (dirname(__FILE__) . '/sqlite.php');
 require_once (dirname(__FILE__) . '/elastic.php');
 require_once (dirname(__FILE__) . '/ocr.php');
+require_once (dirname(__FILE__) . '/bhl.php');
 
 //----------------------------------------------------------------------------------------
 // First plausible four-digit year in a BHL date string ("1900", "1900-1902", "c1875").
@@ -66,11 +67,22 @@ function item_page_docs($stmts, $itemid, $ocr, &$stats)
 	}
 	$item = $item_rows[0];
 
+	// A virtual item has no scan of its own; its images live under each part's barcode.
+	$virtual = is_virtual_barcode($item['BarCode']);
+
 	$stmts['partpage']->execute(array($itemid));
-	$parts = array();
+	$parts  = array();
+	$thumbs = array();
 	foreach ($stmts['partpage']->fetchAll(PDO::FETCH_ASSOC) as $row)
 	{
 		$parts[$row['PageID']]['part_' . $row['PartID']] = true;
+
+		// Part barcodes only occur in virtual items, where the sequence that names the
+		// image is the page's position in the part, not in the item.
+		if ($row['BarCode'] !== null && !isset($thumbs[$row['PageID']]))
+		{
+			$thumbs[$row['PageID']] = page_thumbnail($row['BarCode'], $row['SequenceOrder']);
+		}
 	}
 
 	// One page row per page type, so group by PageID.
@@ -114,6 +126,15 @@ function item_page_docs($stmts, $itemid, $ocr, &$stats)
 		}
 
 		$doc->seq = (int)$page['SequenceOrder'];
+
+		if (isset($thumbs[$pageid]))
+		{
+			$doc->thumbnail = $thumbs[$pageid];
+		}
+		elseif (!$virtual)
+		{
+			$doc->thumbnail = page_thumbnail($item['BarCode'], $doc->seq);
+		}
 
 		// The printed page label, or the sequence number in brackets as BHL shows it.
 		$doc->name = $page['PageNumber'] !== null
@@ -220,9 +241,9 @@ if (!$report && !$ndjson)
 $pdo = $config['bhlpdo'];
 
 $stmts = array(
-	'item'     => $pdo->prepare('SELECT TitleID, Year, VolumeInfo FROM item WHERE ItemID = ?'),
+	'item'     => $pdo->prepare('SELECT TitleID, BarCode, Year, VolumeInfo FROM item WHERE ItemID = ?'),
 	'page'     => $pdo->prepare('SELECT PageID, SequenceOrder, Year, Volume, Issue, PagePrefix, PageNumber, PageTypeName FROM page WHERE ItemID = ?'),
-	'partpage' => $pdo->prepare('SELECT PageID, PartID FROM partpage WHERE ItemID = ?'),
+	'partpage' => $pdo->prepare('SELECT pp.PageID, pp.PartID, pp.SequenceOrder, MAX(part.BarCode) AS BarCode FROM partpage pp LEFT JOIN part USING (PartID) WHERE pp.ItemID = ? GROUP BY pp.PageID, pp.PartID'),
 );
 
 $stats = array(

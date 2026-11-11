@@ -25,6 +25,10 @@ $config['elastic_options'] = array(
 	'password' => getenv('ELASTIC_PASSWORD'),
 );
 
+// BHL page images------------------------------------------------------------------------
+// BHL's open data bucket; thumbnails are web/<barcode>/<barcode>_<seq>_thumb.webp
+$config['bhl_images'] = 'https://bhl-open-data.s3.amazonaws.com';
+
 // Database-------------------------------------------------------------------------------
 $config['bhldb']    = dirname(__FILE__) . '/bhl.db';
 
