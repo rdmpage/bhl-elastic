@@ -7,3 +7,8 @@ cache/
 # Keep the bhldata folder and its provenance file, ignore the dumps themselves
 bhldata/*
 !bhldata/last-updated.txt
+
+# OCR archive manifests are derived data; keep only the docs
+bhlocr/*
+!bhlocr/*.md
+*.checkpoint

@@ -1,0 +1,32 @@
+{
+  "settings": {
+    "number_of_replicas": 0,
+    "analysis": {
+      "analyzer": {
+        "folding": {
+          "tokenizer": "standard",
+          "filter": ["lowercase", "asciifolding"]
+        }
+      }
+    }
+  },
+  "mappings": {
+    "dynamic": "strict",
+    "properties": {
+      "id":           { "type": "keyword" },
+      "type":         { "type": "keyword" },
+      "itemid":       { "type": "keyword" },
+      "titleid":      { "type": "keyword" },
+      "partid":       { "type": "keyword" },
+      "seq":          { "type": "integer" },
+      "name":         { "type": "text", "analyzer": "folding", "index_options": "offsets", "fields": { "keyword": { "type": "keyword", "ignore_above": 256 } } },
+      "tags":         { "type": "keyword" },
+      "year":         { "type": "integer" },
+      "volume":       { "type": "keyword" },
+      "issue":        { "type": "keyword" },
+      "text":            { "type": "text", "analyzer": "folding", "index_options": "offsets" },
+      "locations":       { "type": "geo_point" },
+      "geo_annotations": { "type": "object", "enabled": false }
+    }
+  }
+}

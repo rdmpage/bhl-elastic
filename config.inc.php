@@ -16,6 +16,15 @@ if (file_exists(dirname(__FILE__) . '/env.php'))
 	include 'env.php';
 }
 
+// Elasticsearch--------------------------------------------------------------------------
+// One index holds pages, items, parts and titles, told apart by the "type" field.
+$config['elastic_options'] = array(
+	'url'      => getenv('ELASTIC_URL') ? getenv('ELASTIC_URL') : 'http://127.0.0.1:9200',
+	'index'    => getenv('ELASTIC_INDEX') ? getenv('ELASTIC_INDEX') : 'bhl',
+	'user'     => getenv('ELASTIC_USERNAME'),
+	'password' => getenv('ELASTIC_PASSWORD'),
+);
+
 // Database-------------------------------------------------------------------------------
 $config['bhldb']    = dirname(__FILE__) . '/bhl.db';
 
