@@ -5,6 +5,10 @@ global $config;
 // Date timezone
 date_default_timezone_set('UTC');
 
+// Webserver
+$config['site_name'] = "BHL Elastic";
+$config['web_root'] = "/";
+
 // Cache----------------------------------------------------------------------------------
 $config['cache'] = dirname(__FILE__) . '/cache';
 

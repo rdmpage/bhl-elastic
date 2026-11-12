@@ -35,17 +35,6 @@ require_once (dirname(__FILE__) . '/ocr.php');
 require_once (dirname(__FILE__) . '/bhl.php');
 
 //----------------------------------------------------------------------------------------
-// First plausible four-digit year in a BHL date string ("1900", "1900-1902", "c1875").
-function first_year($value)
-{
-	if ($value !== null && preg_match('/(1[5-9]\d\d|20\d\d)/', $value, $m))
-	{
-		return (int)$m[1];
-	}
-	return null;
-}
-
-//----------------------------------------------------------------------------------------
 // Page documents for one item. $ocr maps PageID => raw OCR text.
 function item_page_docs($stmts, $itemid, $ocr, &$stats)
 {

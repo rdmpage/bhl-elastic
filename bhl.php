@@ -26,48 +26,83 @@ function page_thumbnail($barcode, $seq)
 }
 
 //----------------------------------------------------------------------------------------
-// Thumbnail URL for an item: the thumbnail of its ThumbnailPageID, or null if that is
-// not set (53 virtual items) or names a page bhl.db does not have (38 items).
+// First plausible four-digit year in a BHL date string ("1900", "1900-1902", "c1875").
+function first_year($value)
+{
+	if ($value !== null && preg_match('/(1[5-9]\d\d|20\d\d)/', $value, $m))
+	{
+		return (int)$m[1];
+	}
+	return null;
+}
+
+//----------------------------------------------------------------------------------------
+// Thumbnail URL for page $pageid of item $itemid, or null if bhl.db does not have that
+// page in that item.
 //
 // For a normal item the page is in the item's own scan. For a virtual item it is a page
 // of one of its parts, so the image is named by the part's barcode and the page's
 // position in that part.
-function item_thumbnail($pdo, $itemid)
+function item_page_thumbnail($pdo, $itemid, $pageid)
 {
 	static $stmts = null;
 
 	if ($stmts === null)
 	{
 		$stmts = array(
-			'item'     => $pdo->prepare('SELECT BarCode, ThumbnailPageID FROM item WHERE ItemID = ? LIMIT 1'),
+			'item'     => $pdo->prepare('SELECT BarCode FROM item WHERE ItemID = ? LIMIT 1'),
 			'page'     => $pdo->prepare('SELECT SequenceOrder FROM page WHERE PageID = ? AND ItemID = ? LIMIT 1'),
 			'partpage' => $pdo->prepare('SELECT part.BarCode, pp.SequenceOrder FROM partpage pp JOIN part USING (PartID) WHERE pp.PageID = ? AND pp.ItemID = ? AND part.BarCode IS NOT NULL LIMIT 1'),
 		);
+	}
+
+	if ($pageid === null)
+	{
+		return null;
 	}
 
 	$stmts['item']->execute(array($itemid));
 	$item = $stmts['item']->fetch(PDO::FETCH_ASSOC);
 	$stmts['item']->closeCursor();
 
-	if (!$item || $item['ThumbnailPageID'] === null)
+	if (!$item)
 	{
 		return null;
 	}
 
 	if (is_virtual_barcode($item['BarCode']))
 	{
-		$stmts['partpage']->execute(array($item['ThumbnailPageID'], $itemid));
+		$stmts['partpage']->execute(array($pageid, $itemid));
 		$row = $stmts['partpage']->fetch(PDO::FETCH_ASSOC);
 		$stmts['partpage']->closeCursor();
 
 		return $row ? page_thumbnail($row['BarCode'], $row['SequenceOrder']) : null;
 	}
 
-	$stmts['page']->execute(array($item['ThumbnailPageID'], $itemid));
+	$stmts['page']->execute(array($pageid, $itemid));
 	$row = $stmts['page']->fetch(PDO::FETCH_ASSOC);
 	$stmts['page']->closeCursor();
 
 	return $row ? page_thumbnail($item['BarCode'], $row['SequenceOrder']) : null;
+}
+
+//----------------------------------------------------------------------------------------
+// Thumbnail URL for an item: the thumbnail of its ThumbnailPageID, or null if that is
+// not set (53 virtual items) or names a page bhl.db does not have (38 items).
+function item_thumbnail($pdo, $itemid)
+{
+	static $stmt = null;
+
+	if ($stmt === null)
+	{
+		$stmt = $pdo->prepare('SELECT ThumbnailPageID FROM item WHERE ItemID = ? LIMIT 1');
+	}
+
+	$stmt->execute(array($itemid));
+	$pageid = $stmt->fetchColumn();
+	$stmt->closeCursor();
+
+	return $pageid ? item_page_thumbnail($pdo, $itemid, $pageid) : null;
 }
 
 ?>
