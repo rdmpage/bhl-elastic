@@ -109,9 +109,17 @@ function item_page_docs($stmts, $itemid, $ocr, &$stats)
 		$doc->itemid  = 'item_' . $itemid;
 		$doc->titleid = array_keys($titles);
 
+		// Search results are grouped (collapsed) on group, which must have one value: the
+		// page's part, or else its item. A page shared by two parts (the end of one
+		// article and the start of the next) goes with the part with the lowest PartID.
 		if (isset($parts[$pageid]))
 		{
 			$doc->partid = array_keys($parts[$pageid]);
+			$doc->group  = 'part_' . min(array_map('id_number', $doc->partid));
+		}
+		else
+		{
+			$doc->group = $doc->itemid;
 		}
 
 		$doc->seq = (int)$page['SequenceOrder'];

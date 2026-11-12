@@ -18,6 +18,7 @@
       "itemid":       { "type": "keyword" },
       "titleid":      { "type": "keyword" },
       "partid":       { "type": "keyword" },
+      "group":        { "type": "keyword" },
       "seq":          { "type": "integer" },
       "name":         { "type": "text", "analyzer": "folding", "index_options": "offsets", "fields": { "keyword": { "type": "keyword", "ignore_above": 256 } } },
       "fullname":     { "type": "text", "analyzer": "folding" },

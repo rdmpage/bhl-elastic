@@ -26,6 +26,13 @@ function page_thumbnail($barcode, $seq)
 }
 
 //----------------------------------------------------------------------------------------
+// Numeric part of a prefixed document id: "part_349927" -> 349927
+function id_number($id)
+{
+	return (int)preg_replace('/^[a-z]+_/', '', $id);
+}
+
+//----------------------------------------------------------------------------------------
 // First plausible four-digit year in a BHL date string ("1900", "1900-1902", "c1875").
 function first_year($value)
 {

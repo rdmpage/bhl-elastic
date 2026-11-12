@@ -11,35 +11,10 @@
 	margin: 1em 0;
 }
 
-.hit {
-	display: flex;
-	gap: 1em;
-	padding: 1em 0;
-	border-bottom: 1px solid var(--border-color);
-}
 
-.hit-thumbnail {
-	flex: 0 0 80px;
-}
 
-.hit-thumbnail img {
-	width: 80px;
-	height: auto;
-	border: 1px solid var(--border-color);
-	background-color: var(--thumbnail-bg);
-	display: block;
-}
 
-.hit-body {
-	flex: 1 1 auto;
-	min-width: 0; /* let long OCR words wrap rather than widen the column */
-}
 
-.hit-body h2 {
-	font-size: 1.05em;
-	margin: 0 0 0.2em 0;
-	line-height: 1.3;
-}
 
 .hit-meta {
 	color: var(--muted-text);
@@ -64,4 +39,58 @@
 	display: flex;
 	justify-content: space-between;
 	padding: 1em 0;
+}
+
+/* grouped results: one article or volume, then its best pages */
+.group {
+	padding: 1em 0;
+	border-bottom: 1px solid var(--border-color);
+}
+
+.group h2 {
+	font-size: 1.05em;
+	margin: 0 0 0.2em 0;
+	line-height: 1.3;
+}
+
+.group-authors {
+	font-size: 0.9em;
+	margin: 0 0 0.2em 0;
+}
+
+.page-hit {
+	display: flex;
+	gap: 0.8em;
+	margin: 0.6em 0 0 0;
+}
+
+.page-thumbnail {
+	flex: 0 0 56px;
+}
+
+.page-thumbnail img {
+	width: 56px;
+	height: auto;
+	border: 1px solid var(--border-color);
+	background-color: var(--thumbnail-bg);
+	display: block;
+}
+
+.page-body {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.page-name {
+	font-size: 0.85em;
+}
+
+.page-body .hit-snippets {
+	margin-top: 0.2em;
+}
+
+.group-more {
+	color: var(--muted-text);
+	font-size: 0.85em;
+	margin: 0.6em 0 0 0;
 }

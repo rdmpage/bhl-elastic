@@ -4,6 +4,7 @@ error_reporting(E_ALL);
 
 require_once (dirname(__FILE__) . '/config.inc.php');
 require_once (dirname(__FILE__) . '/elastic.php');
+require_once (dirname(__FILE__) . '/bhl.php');
 
 
 // php -S localhost:4000 index.php
@@ -122,122 +123,62 @@ function default_display($error_msg = '')
 
 
 //----------------------------------------------------------------------------------------
-// Numeric part of a prefixed id: "part_349927" -> 349927
-function id_number($id)
+// Documents by id, as array(id => _source), in one _mget. Ids not in the index are
+// left out.
+function fetch_docs($elastic, $ids, $fields)
 {
-	return (int)preg_replace('/^[a-z]+_/', '', $id);
-}
-
-//----------------------------------------------------------------------------------------
-// Names of the parts and titles that a set of page hits belong to, as
-// array(id => name), e.g. 'part_349927' => 'A systematic study of Flourensia ...'.
-// One _mget for the whole page of results.
-function hit_names($elastic, $hits)
-{
-	$ids = array();
-
-	foreach ($hits as $hit)
-	{
-		foreach (array('partid', 'titleid') as $field)
-		{
-			if (isset($hit->_source->{$field}))
-			{
-				foreach ($hit->_source->{$field} as $id)
-				{
-					$ids[$id] = true;
-				}
-			}
-		}
-	}
-
-	$names = array();
+	$docs = array();
 
 	if (count($ids) == 0)
 	{
-		return $names;
+		return $docs;
 	}
 
-	$request = array('ids' => array_keys($ids));
+	$request = array('ids' => array_values(array_unique($ids)));
 
-	$resp = $elastic->send('POST', '_mget?_source=name', json_encode($request));
+	$resp = $elastic->send('POST', '_mget?_source=' . implode(',', $fields), json_encode($request));
 
 	if ($resp[0] == 200)
 	{
 		foreach ($resp[1]->docs as $doc)
 		{
-			if ($doc->found && isset($doc->_source->name))
+			if ($doc->found)
 			{
-				$names[$doc->_id] = $doc->_source->name;
+				$docs[$doc->_id] = $doc->_source;
 			}
 		}
 	}
 
-	return $names;
+	return $docs;
 }
 
 //----------------------------------------------------------------------------------------
-// One page hit: thumbnail, the article (or else the title) it is in, where it is in the
-// item, and the highlighted text.
-function display_page_hit($hit, $names)
+// "v. 16" for a bare number; item.VolumeInfo is already free text such as
+// "v.20 (1910-1911)"
+function format_volume($volume)
+{
+	return (preg_match('/^\d/', $volume) ? 'v. ' : '') . $volume;
+}
+
+//----------------------------------------------------------------------------------------
+// One matching page within a group: small thumbnail, page label, highlighted text.
+function display_group_page($hit)
 {
 	$source = $hit->_source;
-	$pageid = id_number($hit->_id);
-	$url    = 'https://www.biodiversitylibrary.org/page/' . $pageid;
+	$url    = 'https://www.biodiversitylibrary.org/page/' . id_number($hit->_id);
 
-	// Heading: the article if the page is in one, otherwise the title(s) of the item
-	$heading = '';
-	$heading_url = $url;
+	echo '<div class="page-hit">';
 
-	if (isset($source->partid) && isset($names[$source->partid[0]]))
-	{
-		$heading = $names[$source->partid[0]];
-		$heading_url = 'https://www.biodiversitylibrary.org/part/' . id_number($source->partid[0]);
-	}
-
-	$titles = array();
-	if (isset($source->titleid))
-	{
-		foreach ($source->titleid as $id)
-		{
-			if (isset($names[$id]))
-			{
-				$titles[] = $names[$id];
-			}
-		}
-	}
-
-	if ($heading == '')
-	{
-		$heading = count($titles) > 0 ? array_shift($titles) : $hit->_id;
-		$heading_url = 'https://www.biodiversitylibrary.org/item/' . id_number($source->itemid);
-	}
-
-	// Meta line: title(s) not used as the heading, volume, year, page. A monograph
-	// catalogued as a part often has the same name as its title.
-	$meta = array_values(array_diff($titles, array($heading)));
-	// page.Volume is a bare number, item.VolumeInfo is free text such as "v.20 (1910-1911)"
-	if (isset($source->volume))
-	{
-		$meta[] = (preg_match('/^\d/', $source->volume) ? 'v. ' : '') . $source->volume;
-	}
-	if (isset($source->issue))  { $meta[] = 'no. ' . $source->issue; }
-	if (isset($source->year))   { $meta[] = $source->year; }
-	if (isset($source->name))   { $meta[] = $source->name; }
-
-	echo '<div class="hit">';
-
-	echo '<div class="hit-thumbnail">';
-	echo '<a href="' . htmlspecialchars($url) . '">';
+	echo '<a class="page-thumbnail" href="' . htmlspecialchars($url) . '">';
 	if (isset($source->thumbnail))
 	{
 		echo '<img loading="lazy" src="' . htmlspecialchars($source->thumbnail) . '" alt="">';
 	}
 	echo '</a>';
-	echo '</div>';
 
-	echo '<div class="hit-body">';
-	echo '<h2><a href="' . htmlspecialchars($heading_url) . '">' . htmlspecialchars($heading) . '</a></h2>';
-	echo '<p class="hit-meta">' . htmlspecialchars(implode(' · ', $meta)) . '</p>';
+	echo '<div class="page-body">';
+	echo '<a class="page-name" href="' . htmlspecialchars($url) . '">'
+		. htmlspecialchars(isset($source->name) ? $source->name : $hit->_id) . '</a>';
 
 	// The highlighter's html encoder has already escaped the OCR text
 	if (isset($hit->highlight->text))
@@ -246,6 +187,90 @@ function display_page_hit($hit, $names)
 	}
 
 	echo '</div>';
+	echo '</div>';
+}
+
+//----------------------------------------------------------------------------------------
+// One group of matching pages: the article they are in (or the item, if they are not
+// in an article), then its best pages.
+//
+// $docs holds the part, item and title documents the groups on this page need.
+function display_group($hit, $docs)
+{
+	$pages = $hit->inner_hits->pages->hits;
+	$first = $pages->hits[0]->_source;
+
+	$group = isset($docs[$hit->fields->group[0]]) ? $docs[$hit->fields->group[0]] : null;
+	$is_part = (strpos($hit->fields->group[0], 'part_') === 0);
+
+	// Names of the item's titles, e.g. the monograph and the series it is in
+	$titles = array();
+	if (isset($first->titleid))
+	{
+		foreach ($first->titleid as $id)
+		{
+			if (isset($docs[$id]->name))
+			{
+				$titles[] = $docs[$id]->name;
+			}
+		}
+	}
+
+	$meta = array();
+
+	if ($is_part)
+	{
+		$heading     = $group && isset($group->name) ? $group->name : $hit->fields->group[0];
+		$heading_url = 'https://www.biodiversitylibrary.org/part/' . id_number($hit->fields->group[0]);
+
+		if ($group && isset($group->container))
+		{
+			$meta[] = $group->container;
+		}
+		else
+		{
+			$meta = $titles;
+		}
+		if ($group && isset($group->volume)) { $meta[] = format_volume($group->volume); }
+		if ($group && isset($group->issue))  { $meta[] = 'no. ' . $group->issue; }
+		if ($group && isset($group->year))   { $meta[] = $group->year; }
+		if ($group && isset($group->pages))  { $meta[] = 'pp. ' . str_replace('--', '–', $group->pages); }
+	}
+	else
+	{
+		$heading     = count($titles) > 0 ? array_shift($titles) : $hit->fields->group[0];
+		$heading_url = 'https://www.biodiversitylibrary.org/item/' . id_number($hit->fields->group[0]);
+
+		$meta = $titles;
+		if ($group && isset($group->volume)) { $meta[] = format_volume($group->volume); }
+		if ($group && isset($group->year))   { $meta[] = $group->year; }
+	}
+
+	// A monograph catalogued as a part often has the same name as its title
+	$meta = array_values(array_diff($meta, array($heading)));
+
+	echo '<div class="group">';
+
+	echo '<h2><a href="' . htmlspecialchars($heading_url) . '">' . htmlspecialchars($heading) . '</a></h2>';
+
+	if ($is_part && $group && isset($group->authors))
+	{
+		echo '<p class="group-authors">' . htmlspecialchars(implode('; ', $group->authors)) . '</p>';
+	}
+
+	echo '<p class="hit-meta">' . htmlspecialchars(implode(' · ', $meta)) . '</p>';
+
+	foreach ($pages->hits as $page)
+	{
+		display_group_page($page);
+	}
+
+	$more = $pages->total->value - count($pages->hits);
+	if ($more > 0)
+	{
+		echo '<p class="group-more">+ ' . number_format($more) . ' more matching page' . ($more == 1 ? '' : 's') . '</p>';
+	}
+
 	echo '</div>';
 }
 
@@ -288,13 +313,18 @@ function display_search($q, $from = 0)
 	// do search
 	$elastic = new ElasticSearch($config['elastic_options']);
 
-	// Pages that have all the words, with pages that have them as a phrase first
+	// Pages that have all the words, with pages that have them as a phrase first,
+	// collapsed into one result per article (or item, for pages not in an article).
+	// Groups are ranked by their best page; each brings its three best pages.
 	$query = array(
 		'from' => $from,
 		'size' => $size,
 		'track_total_hits' => true,
 		'query' => array(
 			'bool' => array(
+				'filter' => array(
+					'term' => array('type' => 'page')
+				),
 				'must' => array(
 					'match' => array('text' => array('query' => $q, 'operator' => 'and'))
 				),
@@ -303,12 +333,23 @@ function display_search($q, $from = 0)
 				),
 			)
 		),
-		'_source' => array('itemid', 'titleid', 'partid', 'name', 'year', 'volume', 'issue', 'thumbnail'),
-		'highlight' => array(
-			'encoder' => 'html',
-			'pre_tags' => array('<em>'),
-			'post_tags' => array('</em>'),
-			'fields' => array('text' => array('fragment_size' => 150, 'number_of_fragments' => 3)),
+		'_source' => false,
+		'collapse' => array(
+			'field' => 'group',
+			'inner_hits' => array(
+				'name' => 'pages',
+				'size' => 3,
+				'_source' => array('titleid', 'name', 'thumbnail'),
+				'highlight' => array(
+					'encoder' => 'html',
+					'pre_tags' => array('<em>'),
+					'post_tags' => array('</em>'),
+					'fields' => array('text' => array('fragment_size' => 150, 'number_of_fragments' => 2)),
+				),
+			),
+		),
+		'aggs' => array(
+			'groups' => array('cardinality' => array('field' => 'group')),
 		),
 	);
 
@@ -322,24 +363,38 @@ function display_search($q, $from = 0)
 	}
 	else
 	{
-		$hits  = $resp[1]->hits->hits;
-		$total = $resp[1]->hits->total->value;
+		$hits   = $resp[1]->hits->hits;
+		$total  = $resp[1]->hits->total->value;
+		$groups = $resp[1]->aggregations->groups->value; // approximate above a few thousand
 
-		echo '<p class="results-summary">' . number_format($total) . ' pages';
-		if ($total > 0)
+		echo '<p class="results-summary">' . number_format($total) . ' pages in '
+			. number_format($groups) . ' articles and volumes';
+		if ($groups > 0)
 		{
 			echo ', showing ' . number_format($from + 1) . '–' . number_format($from + count($hits));
 		}
 		echo ' (' . $resp[1]->took . ' ms)</p>';
 
-		$names = hit_names($elastic, $hits);
+		// The part or item each group is, and the titles of the items
+		$ids = array();
+		foreach ($hits as $hit)
+		{
+			$ids[] = $hit->fields->group[0];
+			$first = $hit->inner_hits->pages->hits->hits[0]->_source;
+			if (isset($first->titleid))
+			{
+				$ids = array_merge($ids, $first->titleid);
+			}
+		}
+
+		$docs = fetch_docs($elastic, $ids, array('name', 'authors', 'container', 'volume', 'issue', 'year', 'pages'));
 
 		foreach ($hits as $hit)
 		{
-			display_page_hit($hit, $names);
+			display_group($hit, $docs);
 		}
 
-		display_pager($q, $from, $size, $total);
+		display_pager($q, $from, $size, $groups);
 	}
 
 	echo '</div>';
