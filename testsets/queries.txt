@@ -1,0 +1,15 @@
+# Test searches for the BHL-Light index, one per line; run with test-queries.php.
+# Note what a good answer is, so changes to the query can be judged against it.
+
+# Binomial: Dillon's Flourensia monograph first, Blake 1936 (original description) present
+Flourensia dentata
+# Genus alone: herpetology on Rhacophorus
+Rhacophorus
+# All three words needed; phrase matches first
+new species Borneo
+# Two rare words: Boulenger's batrachian papers on Borneo
+Rhacophorus Borneo
+# Four words: 75% need match, so pages may lack one of them
+new species Rhacophorus Borneo
+# Citation-like string: tolerant of missing words
+Description of a new species of Rhacophorus from Borneo

@@ -202,10 +202,13 @@ function item_to_jsonld($id, $item, $titleids, $docs)
 }
 
 //----------------------------------------------------------------------------------------
-// Search page text. Pages that have all the words match, with pages that have them as a
-// phrase ranked first. Pages are collapsed into one result per article (or item, for
-// pages not in an article), ranked by their best page, each with its three best pages
-// in hasPart.
+// Search page text. A page matches if it has all the words of a query of up to three
+// words (e.g. a binomial), or 75% of the words of a longer one (e.g. a citation, where
+// OCR errors and line breaks lose some words). Pages with the words as a phrase, allowing
+// up to three words' movement, rank first.
+//
+// Pages are collapsed into one result per article (or item, for pages not in an
+// article), ranked by their best page, each with its three best pages in hasPart.
 //
 // Returns an ItemList; numberOfItems is the (approximate) number of groups, and each
 // ListItem's position counts from 1 across all pages of results.
@@ -224,10 +227,10 @@ function search_text($q, $from = 0, $size = 20)
 					'term' => array('type' => 'page')
 				),
 				'must' => array(
-					'match' => array('text' => array('query' => $q, 'operator' => 'and'))
+					'match' => array('text' => array('query' => $q, 'minimum_should_match' => '3<75%'))
 				),
 				'should' => array(
-					'match_phrase' => array('text' => array('query' => $q, 'boost' => 2))
+					'match_phrase' => array('text' => array('query' => $q, 'slop' => 3, 'boost' => 3))
 				),
 			)
 		),
