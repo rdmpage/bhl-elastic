@@ -208,15 +208,22 @@ function item_to_jsonld($id, $item, $titleids, $docs)
 // up to three words' movement, rank first.
 //
 // Pages are collapsed into one result per article (or item, for pages not in an
-// article), ranked by their best page, each with its three best pages in hasPart.
+// article), ranked by their best page.
 //
 // Returns an ItemList; numberOfItems is the (approximate) number of groups, and each
 // ListItem's position counts from 1 across all pages of results.
-function search_text($q, $from = 0, $size = 20)
+//
+// Each article or item is itself also an ItemList of its matching pages (as nested
+// OfferCatalogs are in schema.org's examples): numberOfItems is how many of its pages
+// matched, and itemListElement holds the best $pages of them, ranked, with scores. Up to
+// 100 pages per result (Elasticsearch's index.max_inner_result_window).
+function search_text($q, $from = 0, $size = 20, $pages_per_result = 3)
 {
 	global $config;
 
 	$elastic = new ElasticSearch($config['elastic_options']);
+
+	$pages_per_result = max(1, min(100, $pages_per_result));
 
 	$query = array(
 		'from' => $from,
@@ -239,7 +246,7 @@ function search_text($q, $from = 0, $size = 20)
 			'field' => 'group',
 			'inner_hits' => array(
 				'name' => 'pages',
-				'size' => 3,
+				'size' => $pages_per_result,
 				'_source' => array('titleid', 'name', 'seq', 'thumbnail'),
 				'highlight' => array(
 					'encoder' => 'html',
@@ -296,10 +303,19 @@ function search_text($q, $from = 0, $size = 20)
 			? part_to_jsonld($group, $doc, $titleids, $docs)
 			: item_to_jsonld($group, $doc, $titleids, $docs);
 
-		$work->hasPart = array();
-		foreach ($pages as $page)
+		$work->type = array($work->type, 'ItemList');
+		$work->numberOfItems = $hit->inner_hits->pages->hits->total->value;
+		$work->itemListElement = array();
+
+		foreach ($pages as $j => $page)
 		{
-			$work->hasPart[] = page_to_jsonld($page);
+			$page_element = new stdclass;
+			$page_element->type = 'ListItem';
+			$page_element->position = $j + 1;
+			$page_element->resultScore = $page->_score;
+			$page_element->item = page_to_jsonld($page);
+
+			$work->itemListElement[] = $page_element;
 		}
 
 		$element = new stdclass;

@@ -173,7 +173,7 @@ function display_result_page($page)
 	echo '<a class="page-name" href="' . htmlspecialchars($page->id) . '">'
 		. htmlspecialchars(isset($page->name) ? $page->name : $page->id) . '</a>';
 
-	// The highlighter has already HTML-escaped the OCR text (see page_to_jsonld())
+	// The highlighter has already HTML-escaped the OCR text (see page_to_jsonld() in search.php)
 	if (isset($page->text))
 	{
 		echo '<p class="hit-snippets">… ' . implode(' … ', $page->text) . ' …</p>';
@@ -214,9 +214,16 @@ function display_result($work)
 
 	echo '<p class="hit-meta">' . htmlspecialchars(implode(' · ', $meta)) . '</p>';
 
-	foreach ($work->hasPart as $page)
+	// The work is also a list of its matching pages, best first
+	foreach ($work->itemListElement as $element)
 	{
-		display_result_page($page);
+		display_result_page($element->item);
+	}
+
+	$more = $work->numberOfItems - count($work->itemListElement);
+	if ($more > 0)
+	{
+		echo '<p class="group-more">+ ' . number_format($more) . ' more matching page' . ($more == 1 ? '' : 's') . '</p>';
 	}
 
 	echo '</div>';

@@ -14,9 +14,11 @@ Where things stand and what to think about next. Last updated 2026-11-12.
 
 ## Next, in rough order
 
-1. **Catalogue search.** Search the metadata rather than the OCR: `name` (weighted highest), `authors`, `container` and `fullname` on part and title documents. Return the same `ItemList`, without `hasPart` pages. The data is already loaded.
+1. **Catalogue search.** Search the metadata rather than the OCR: `name` (weighted highest), `authors`, `container` and `fullname` on part and title documents. Return the same `ItemList`, without the nested lists of matching pages. The data is already loaded.
 2. **Journal article lists, as in BioStor.** All parts of a title, filtered by year, sorted by year, volume and issue. Needs a numeric `volume_sort` field, because `volume` is a keyword and sorts "10" before "9". Use a `date_histogram` of articles per year for year navigation.
-3. **Document viewer.** Clicking an article or page runs the same query on just that document, with matching pages shown as ticks down the scrollbar (like Google Books). `hasPart[].position` gives the page sequence.
+   - BioStor's version is in ~/Development/biostor-lite: `do_search()`, `do_issn()`, `do_issn_year()` and `page_sort_key()` in `index.php`, and `display_decade_list()` in `interface-shared.php`. It handles `issn:`, `oclc:` and `isbn:` prefixes in the search box, fetches up to 5,000 hits, sorts them in PHP on padded year-volume-issue-page keys (roman-numbered pages first), and shows a journal as collapsible decades of thumbnails. Journal descriptions come from `about/<ISSN>.json`.
+   - Here: compute `volume_sort` and `spage_sort` (using the `page_sort_key()` logic) at load time and sort in Elasticsearch, so paging works for any size of journal. In BHL the ISSN and OCLC number belong to the title (`titleidentifier`), so add them to title documents as keywords; `issn:X` then finds the title and lists its parts by `titleid`. The journal page's JSON-LD comes from the title document.
+3. **Document viewer.** Clicking an article or page runs the same query on just that document, with matching pages shown as ticks down the scrollbar (like Google Books). It can return the same nested `ItemList` of pages, listing every match; each page's own `position` is its sequence in the volume.
 
 ## Later; these depend on decisions about data
 
