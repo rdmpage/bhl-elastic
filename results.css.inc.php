@@ -94,3 +94,25 @@
 	font-size: 0.85em;
 	margin: 0.6em 0 0 0;
 }
+
+/* kinds of search, below the search bar */
+.tabs {
+	list-style: none;
+	display: flex;
+	gap: 1.5em;
+	margin: 0;
+	padding: 0.8em 0 0 0;
+	border-bottom: 1px solid var(--border-color);
+}
+
+.tabs li {
+	padding: 0 0 0.4em 0;
+}
+
+.tabs li.active {
+	border-bottom: 2px solid var(--text);
+}
+
+.tabs li.active a {
+	color: var(--text);
+}

@@ -77,9 +77,16 @@ function display_main_end()
 }
 
 //----------------------------------------------------------------------------------------
-function display_navbar($q)
+function display_navbar($q, $type = 'all')
 {
 	global $config;
+
+	// Keep the kind of search when the query is changed
+	$hidden = '';
+	if ($type != 'all')
+	{
+		$hidden = '<input type="hidden" name="type" value="' . htmlspecialchars($type) . '">';
+	}
 
 	echo '<nav>
 	<ul>
@@ -87,12 +94,33 @@ function display_navbar($q)
 		<li class="search-item">
 			<form method="get" action="index.php">
 				<input class="search" id="search" name="q" type="text" placeholder="Search for name..." value="' . htmlspecialchars($q) . '">
+				' . $hidden . '
 				<input type="submit" value="Search">
 			</form>
 		</li>
 	</ul>
 	</nav>';
 
+}
+
+//----------------------------------------------------------------------------------------
+// Tabs for the kinds of search; each re-runs the same query.
+function display_tabs($q, $type)
+{
+	echo '<ul class="tabs">';
+	foreach (search_types() as $key => $search_type)
+	{
+		$params = array('q' => $q);
+		if ($key != 'all')
+		{
+			$params['type'] = $key;
+		}
+
+		echo '<li' . ($key == $type ? ' class="active"' : '') . '>';
+		echo '<a href="?' . htmlspecialchars(http_build_query($params)) . '">' . htmlspecialchars($search_type['label']) . '</a>';
+		echo '</li>';
+	}
+	echo '</ul>';
 }
 
 //----------------------------------------------------------------------------------------
@@ -214,16 +242,24 @@ function display_result($work)
 
 	echo '<p class="hit-meta">' . htmlspecialchars(implode(' · ', $meta)) . '</p>';
 
-	// The work is also a list of its matching pages, best first
-	foreach ($work->itemListElement as $element)
+	if (isset($work->sameAs) && preg_match('/^https:\/\/doi.org\/(.*)$/', $work->sameAs, $m))
 	{
-		display_result_page($element->item);
+		echo '<p class="hit-meta">doi:<a href="' . htmlspecialchars($work->sameAs) . '">' . htmlspecialchars($m[1]) . '</a></p>';
 	}
 
-	$more = $work->numberOfItems - count($work->itemListElement);
-	if ($more > 0)
+	// From a text search the work is also a list of its matching pages, best first
+	if (isset($work->itemListElement))
 	{
-		echo '<p class="group-more">+ ' . number_format($more) . ' more matching page' . ($more == 1 ? '' : 's') . '</p>';
+		foreach ($work->itemListElement as $element)
+		{
+			display_result_page($element->item);
+		}
+
+		$more = $work->numberOfItems - count($work->itemListElement);
+		if ($more > 0)
+		{
+			echo '<p class="group-more">+ ' . number_format($more) . ' more matching page' . ($more == 1 ? '' : 's') . '</p>';
+		}
 	}
 
 	echo '</div>';
@@ -231,21 +267,27 @@ function display_result($work)
 
 //----------------------------------------------------------------------------------------
 // Previous/next links
-function display_pager($q, $from, $size, $total)
+function display_pager($q, $type, $from, $size, $total)
 {
+	$params = array('q' => $q);
+	if ($type != 'all')
+	{
+		$params['type'] = $type;
+	}
+
 	echo '<div class="pager">';
 
 	echo '<span>';
 	if ($from > 0)
 	{
-		echo '<a href="?' . htmlspecialchars(http_build_query(array('q' => $q, 'from' => max(0, $from - $size)))) . '">← Previous</a>';
+		echo '<a href="?' . htmlspecialchars(http_build_query($params + array('from' => max(0, $from - $size)))) . '">← Previous</a>';
 	}
 	echo '</span>';
 
 	echo '<span>';
 	if ($from + $size < $total)
 	{
-		echo '<a href="?' . htmlspecialchars(http_build_query(array('q' => $q, 'from' => $from + $size))) . '">Next →</a>';
+		echo '<a href="?' . htmlspecialchars(http_build_query($params + array('from' => $from + $size))) . '">Next →</a>';
 	}
 	echo '</span>';
 
@@ -255,7 +297,7 @@ function display_pager($q, $from, $size, $total)
 //----------------------------------------------------------------------------------------
 // Search results, rendered from the same JSON-LD that api.php returns, which is also
 // embedded in the page.
-function display_search($q, $from = 0)
+function display_search($q, $type = 'all', $from = 0)
 {
 	global $config;
 
@@ -267,7 +309,7 @@ function display_search($q, $from = 0)
 	try
 	{
 		// Round trip through JSON so the page renders exactly what the API returns
-		$list = json_decode(json_encode(search_text($q, $from, $size)));
+		$list = json_decode(json_encode(run_search($type, $q, $from, $size)));
 	}
 	catch (Exception $e)
 	{
@@ -275,10 +317,12 @@ function display_search($q, $from = 0)
 	}
 
 	display_html_start($q . ' - ' . $config['site_name'], $list);
-	display_navbar($q);
+	display_navbar($q, $type);
 	display_main_start();
 
 	echo '<div class="results">';
+
+	display_tabs($q, $type);
 
 	if ($error != '')
 	{
@@ -288,19 +332,20 @@ function display_search($q, $from = 0)
 	{
 		$count = count($list->itemListElement);
 
-		echo '<p class="results-summary">' . number_format($list->numberOfItems) . ' articles and volumes';
+		$types = search_types();
+		echo '<p class="results-summary">' . number_format($list->numberOfItems) . ' ' . $types[$type]['noun'];
 		if ($count > 0)
 		{
 			echo ', showing ' . number_format($from + 1) . '–' . number_format($from + $count);
 		}
-		echo ' · <a href="api.php?' . htmlspecialchars(http_build_query(array('q' => $q, 'from' => $from))) . '">JSON-LD</a></p>';
+		echo ' · <a href="api.php?' . htmlspecialchars(http_build_query(array('q' => $q, 'type' => $type, 'from' => $from))) . '">JSON-LD</a></p>';
 
 		foreach ($list->itemListElement as $element)
 		{
 			display_result($element->item);
 		}
 
-		display_pager($q, $from, $size, $list->numberOfItems);
+		display_pager($q, $type, $from, $size, $list->numberOfItems);
 	}
 
 	echo '</div>';
@@ -334,8 +379,9 @@ function main()
 	{	
 		$query = $_GET['q'];
 		$from  = isset($_GET['from']) ? max(0, (int)$_GET['from']) : 0;
+		$type  = isset($_GET['type']) && isset(search_types()[$_GET['type']]) ? $_GET['type'] : 'all';
 
-		display_search($query, $from);
+		display_search($query, $type, $from);
 		
 		exit(0);
 	}

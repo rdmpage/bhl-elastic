@@ -1,7 +1,8 @@
 <?php
 
 // Run the test searches in testsets/queries.txt and print the top results of each, so
-// the effect of a change to the query can be compared before and after.
+// the effect of a change to the query can be compared before and after. A line
+// starting "articles:" is an article search; otherwise it is a text search.
 //
 //   php test-queries.php [testsets/queries.txt] [N]
 
@@ -19,9 +20,16 @@ foreach (file($file, FILE_IGNORE_NEW_LINES) as $line)
 		continue;
 	}
 
-	$list = search_text($q, 0, $n);
+	$type = 'all';
+	if (preg_match('/^(\w+):\s*(.*)$/', $q, $m) && isset(search_types()[$m[1]]))
+	{
+		$type = $m[1];
+		$q    = $m[2];
+	}
 
-	echo $q . ' (' . number_format($list->numberOfItems) . ")\n";
+	$list = run_search($type, $q, 0, $n);
+
+	echo ($type != 'all' ? $type . ': ' : '') . $q . ' (' . number_format($list->numberOfItems) . ")\n";
 
 	foreach ($list->itemListElement as $element)
 	{

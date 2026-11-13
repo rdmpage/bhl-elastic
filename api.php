@@ -5,6 +5,7 @@
 //   api.php?q=Flourensia+dentata
 //   api.php?q=new+species+Borneo&from=20
 //   api.php?q=Rhacophorus&pages=10     (matching pages listed per result, up to 100)
+//   api.php?q=Dillon+1984+Flourensia&type=articles   (search article metadata)
 
 error_reporting(E_ALL);
 
@@ -25,6 +26,7 @@ function main()
 	$q     = isset($_GET['q']) ? trim($_GET['q']) : '';
 	$from  = isset($_GET['from']) ? max(0, (int)$_GET['from']) : 0;
 	$pages = isset($_GET['pages']) ? (int)$_GET['pages'] : 3;
+	$type  = isset($_GET['type']) && isset(search_types()[$_GET['type']]) ? $_GET['type'] : 'all';
 
 	if ($q == '')
 	{
@@ -34,7 +36,7 @@ function main()
 
 	try
 	{
-		send_json(200, search_text($q, $from, 20, $pages));
+		send_json(200, run_search($type, $q, $from, 20, $pages));
 	}
 	catch (Exception $e)
 	{

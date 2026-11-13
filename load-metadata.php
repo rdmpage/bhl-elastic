@@ -95,8 +95,30 @@ function item_doc($stmts, $pdo, $itemid, $title_names)
 }
 
 //----------------------------------------------------------------------------------------
+// A part as one citation string, for article search and reconciliation:
+// "Dillon, Michael Owen (1984) A systematic study of Flourensia (Asteraceae,
+// Heliantheae). Fieldiana. Botany 16: 1-66". The journal is the part's container, or
+// else the name of the item's first title.
+function part_citation($doc, $title_name)
+{
+	$citation = array();
+
+	if (isset($doc->authors)) { $citation[] = implode('; ', $doc->authors); }
+	if (isset($doc->year))    { $citation[] = '(' . $doc->year . ')'; }
+	if (isset($doc->name))    { $citation[] = rtrim($doc->name, '.') . '.'; }
+
+	$source = isset($doc->container) ? $doc->container : $title_name;
+	if (isset($doc->volume)) { $source .= ' ' . $doc->volume; }
+	if (isset($doc->issue))  { $source .= '(' . $doc->issue . ')'; }
+	if (isset($doc->pages))  { $source .= ': ' . str_replace('--', '-', $doc->pages); }
+	$citation[] = $source;
+
+	return trim(implode(' ', $citation));
+}
+
+//----------------------------------------------------------------------------------------
 // Part documents for one item.
-function part_docs($stmts, $pdo, $itemid, $titleids)
+function part_docs($stmts, $pdo, $itemid, $titleids, $title_names)
 {
 	$docs = array();
 
@@ -127,6 +149,9 @@ function part_docs($stmts, $pdo, $itemid, $titleids)
 		set_field($doc, 'pages',     $part['PageRange']);
 		set_field($doc, 'doi',       entity_doi($stmts, 'Part', $partid));
 		set_field($doc, 'thumbnail', item_page_thumbnail($pdo, $itemid, $part['StartPageID']));
+
+		$title_name = isset($title_names[$titleids[0]]) ? $title_names[$titleids[0]] : '';
+		set_field($doc, 'citation', part_citation($doc, $title_name));
 
 		$docs[] = $doc;
 	}
@@ -281,7 +306,7 @@ foreach ($itemids as $itemid)
 	$add($doc);
 	$stats['items']++;
 
-	foreach (part_docs($stmts, $pdo, $itemid, $titleids) as $part)
+	foreach (part_docs($stmts, $pdo, $itemid, $titleids, $title_names) as $part)
 	{
 		$add($part);
 		$stats['parts']++;

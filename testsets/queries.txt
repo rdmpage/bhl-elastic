@@ -13,3 +13,11 @@ Rhacophorus Borneo
 new species Rhacophorus Borneo
 # Citation-like string: tolerant of missing words
 Description of a new species of Rhacophorus from Borneo
+
+# Article search (metadata only)
+# A pasted citation: Dillon's monograph, the only hit
+articles: Dillon 1984 A systematic study of Flourensia Fieldiana Botany 16: 1-66
+# Citation with abbreviated journal and the year off by one: Blake's paper still found
+articles: Blake 1935 New Asteraceae from the United States, Mexico, and South America. J. Wash. Acad. Sci. 25: 311-325
+# Author and subject words: Boulenger's Bornean papers
+articles: Boulenger batrachians Borneo

@@ -137,6 +137,7 @@ function part_to_jsonld($id, $part, $titleids, $docs)
 		if (isset($part->year))      { $work->datePublished = (string)$part->year; }
 		if (isset($part->pages))     { $work->pagination = str_replace('--', '–', $part->pages); }
 		if (isset($part->thumbnail)) { $work->thumbnailUrl = $part->thumbnail; }
+		if (isset($part->doi))       { $work->sameAs = 'https://doi.org/' . $part->doi; }
 
 		// Container: the journal named on the part, or else the item's titles
 		if (isset($part->container))
@@ -283,7 +284,7 @@ function search_text($q, $from = 0, $size = 20, $pages_per_result = 3)
 	}
 
 	$docs = fetch_docs($elastic, $ids,
-		array('name', 'authors', 'container', 'tags', 'volume', 'issue', 'year', 'pages', 'thumbnail'));
+		array('name', 'authors', 'container', 'tags', 'volume', 'issue', 'year', 'pages', 'doi', 'thumbnail'));
 
 	$list = new stdclass;
 	$list->{'@context'} = create_context();
@@ -328,6 +329,109 @@ function search_text($q, $from = 0, $size = 20, $pages_per_result = 3)
 	}
 
 	return $list;
+}
+
+//----------------------------------------------------------------------------------------
+// Search article metadata (not page text), e.g. to see whether a paper is in BHL. The
+// query is matched against each part's citation string (authors, year, title, journal,
+// volume, pages), with the same rule as text search: every word of a short query, 75%
+// of a longer one, so a pasted citation still matches if it differs in a few words.
+// Parts whose title contains the query as a phrase rank first.
+//
+// Returns an ItemList of articles (ScholarlyArticle, Chapter or CreativeWork).
+function search_articles($q, $from = 0, $size = 20)
+{
+	global $config;
+
+	$elastic = new ElasticSearch($config['elastic_options']);
+
+	$query = array(
+		'from' => $from,
+		'size' => $size,
+		'track_total_hits' => true,
+		'query' => array(
+			'bool' => array(
+				'filter' => array(
+					'term' => array('type' => 'part')
+				),
+				'must' => array(
+					'match' => array('citation' => array('query' => $q, 'minimum_should_match' => '3<75%'))
+				),
+				'should' => array(
+					'match_phrase' => array('name' => array('query' => $q, 'slop' => 3, 'boost' => 2))
+				),
+			)
+		),
+		'_source' => array('titleid', 'name', 'authors', 'container', 'tags', 'volume', 'issue', 'year', 'pages', 'doi', 'thumbnail'),
+	);
+
+	$resp = $elastic->send('POST', '_search', json_encode($query));
+
+	if ($resp[0] != 200)
+	{
+		throw new Exception('Search failed (HTTP ' . $resp[0] . ')');
+	}
+
+	$hits = $resp[1]->hits->hits;
+
+	// Title names, for parts with no journal name of their own
+	$ids = array();
+	foreach ($hits as $hit)
+	{
+		if (isset($hit->_source->titleid))
+		{
+			$ids = array_merge($ids, $hit->_source->titleid);
+		}
+	}
+	$docs = fetch_docs($elastic, $ids, array('name'));
+
+	$list = new stdclass;
+	$list->{'@context'} = create_context();
+	$list->type = 'ItemList';
+	$list->name = 'Articles matching "' . $q . '"';
+	$list->numberOfItems = $resp[1]->hits->total->value;
+	$list->itemListElement = array();
+
+	foreach ($hits as $i => $hit)
+	{
+		$titleids = isset($hit->_source->titleid) ? $hit->_source->titleid : array();
+
+		$element = new stdclass;
+		$element->type = 'ListItem';
+		$element->position = $from + $i + 1;
+		$element->resultScore = $hit->_score;
+		$element->item = part_to_jsonld($hit->_id, $hit->_source, $titleids, $docs);
+
+		$list->itemListElement[] = $element;
+	}
+
+	return $list;
+}
+
+//----------------------------------------------------------------------------------------
+// The kinds of search, as tabs on the web page and type= in the API. The first is the
+// default. "noun" describes what numberOfItems counts.
+function search_types()
+{
+	return array(
+		'all'      => array('label' => 'All',      'noun' => 'articles and volumes'),
+		'articles' => array('label' => 'Articles', 'noun' => 'articles'),
+	);
+}
+
+//----------------------------------------------------------------------------------------
+// Run a search of the given type, returning an ItemList.
+function run_search($type, $q, $from = 0, $size = 20, $pages_per_result = 3)
+{
+	switch ($type)
+	{
+		case 'articles':
+			return search_articles($q, $from, $size);
+
+		case 'all':
+		default:
+			return search_text($q, $from, $size, $pages_per_result);
+	}
 }
 
 ?>
