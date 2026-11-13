@@ -116,3 +116,46 @@
 .tabs li.active a {
 	color: var(--text);
 }
+
+/* match page */
+.match-input {
+	width: 100%;
+	box-sizing: border-box;
+	font: inherit;
+	font-size: 0.9em;
+}
+
+.match-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 0.9em;
+}
+
+.match-table th,
+.match-table td {
+	text-align: left;
+	vertical-align: top;
+	padding: 0.4em;
+	border-bottom: 1px solid var(--border-color);
+	overflow-wrap: anywhere;
+}
+
+.match-table td:first-child {
+	width: 45%;
+}
+
+.match-table td:last-child {
+	white-space: nowrap;
+}
+
+.match-table tr.no-match td {
+	color: var(--muted-text);
+}
+
+.match-json pre {
+	font-size: 0.8em;
+	max-height: 20em;
+	overflow: auto;
+	background-color: var(--thumbnail-bg);
+	padding: 0.5em;
+}

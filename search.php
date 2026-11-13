@@ -332,6 +332,26 @@ function search_text($q, $from = 0, $size = 20, $pages_per_result = 3)
 }
 
 //----------------------------------------------------------------------------------------
+// The query for article search, shared with reconciliation (which checks each hit, so
+// can ask for fewer of the words to match).
+function article_query($q, $minimum_should_match = '3<75%')
+{
+	return array(
+		'bool' => array(
+			'filter' => array(
+				'term' => array('type' => 'part')
+			),
+			'must' => array(
+				'match' => array('citation' => array('query' => $q, 'minimum_should_match' => $minimum_should_match))
+			),
+			'should' => array(
+				'match_phrase' => array('name' => array('query' => $q, 'slop' => 3, 'boost' => 2))
+			),
+		)
+	);
+}
+
+//----------------------------------------------------------------------------------------
 // Search article metadata (not page text), e.g. to see whether a paper is in BHL. The
 // query is matched against each part's citation string (authors, year, title, journal,
 // volume, pages), with the same rule as text search: every word of a short query, 75%
@@ -349,19 +369,7 @@ function search_articles($q, $from = 0, $size = 20)
 		'from' => $from,
 		'size' => $size,
 		'track_total_hits' => true,
-		'query' => array(
-			'bool' => array(
-				'filter' => array(
-					'term' => array('type' => 'part')
-				),
-				'must' => array(
-					'match' => array('citation' => array('query' => $q, 'minimum_should_match' => '3<75%'))
-				),
-				'should' => array(
-					'match_phrase' => array('name' => array('query' => $q, 'slop' => 3, 'boost' => 2))
-				),
-			)
-		),
+		'query' => article_query($q),
 		'_source' => array('titleid', 'name', 'authors', 'container', 'tags', 'volume', 'issue', 'year', 'pages', 'doi', 'thumbnail'),
 	);
 
