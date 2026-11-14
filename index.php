@@ -65,12 +65,16 @@ function format_volume($volume)
 }
 
 //----------------------------------------------------------------------------------------
-// Our page for a BHL title URI, or null for anything else.
-function title_page_url($id)
+// Our page for a BHL title or item URI, or null for anything else.
+function local_page_url($id)
 {
 	if (preg_match('/^https:\/\/www.biodiversitylibrary.org\/bibliography\/(\d+)$/', $id, $m))
 	{
 		return '?title=' . $m[1];
+	}
+	if (preg_match('/^https:\/\/www.biodiversitylibrary.org\/item\/(\d+)$/', $id, $m))
+	{
+		return '?item=' . $m[1];
 	}
 	return null;
 }
@@ -110,7 +114,7 @@ function container_labels($work)
 
 		if (isset($container->name))
 		{
-			$labels[] = array($container->name, isset($container->id) ? title_page_url($container->id) : null);
+			$labels[] = array($container->name, isset($container->id) ? local_page_url($container->id) : null);
 		}
 		if (isset($container->volumeNumber)) { $labels[] = array(format_volume($container->volumeNumber), null); }
 		if (isset($container->issueNumber))  { $labels[] = array('no. ' . $container->issueNumber, null); }
@@ -153,8 +157,8 @@ function display_result($work)
 {
 	$heading = isset($work->name) ? $work->name : $work->id;
 
-	// Titles link to our title page, everything else to BHL
-	$href = title_page_url($work->id) ? title_page_url($work->id) : $work->id;
+	// Titles and items link to our pages, everything else to BHL
+	$href = local_page_url($work->id) ? local_page_url($work->id) : $work->id;
 
 	$meta = container_labels($work);
 	if ($work->type == 'Periodical' || $work->type == 'Book')
@@ -586,15 +590,17 @@ function display_title($titleid, $view = 'grid')
 		if (isset($item->copyrightNotice)) { $meta[] = $item->copyrightNotice; }
 		if (isset($item->license))         { $meta[] = license_label($item->license); }
 
+		$href = local_page_url($item->id);
+
 		echo '<div class="page-hit">';
-		echo '<a class="page-thumbnail" href="' . htmlspecialchars($item->id) . '">';
+		echo '<a class="page-thumbnail" href="' . htmlspecialchars($href) . '">';
 		if (isset($item->thumbnailUrl))
 		{
 			echo '<img loading="lazy" src="' . htmlspecialchars($item->thumbnailUrl) . '" alt="">';
 		}
 		echo '</a>';
 		echo '<div class="page-body">';
-		echo '<a class="page-name" href="' . htmlspecialchars($item->id) . '">' . htmlspecialchars($label) . '</a>';
+		echo '<a class="page-name" href="' . htmlspecialchars($href) . '">' . htmlspecialchars($label) . '</a>';
 		echo '<p class="hit-meta">' . htmlspecialchars(implode(' · ', $meta)) . '</p>';
 		echo '</div>';
 		echo '</div>';
@@ -607,6 +613,259 @@ function display_title($titleid, $view = 'grid')
 	echo '</div>';
 
 	display_main_end();
+	display_html_end();
+}
+
+//----------------------------------------------------------------------------------------
+// An item (a scanned volume): a summary, then how its pages are divided into articles,
+// as in bhl-article-coverage. Every page is shown in scan order, coloured by its article,
+// so gaps between articles, and illustrations (plates) not in any article, stand out.
+// A page in two articles (one ends and the next starts on it) shows both colours.
+// Rendered from get_item()'s JSON-LD.
+function display_item($itemid)
+{
+	global $config;
+
+	$item = get_item($itemid);
+
+	if (!$item)
+	{
+		default_display('No item ' . htmlspecialchars($itemid) . ' in this index');
+		return;
+	}
+
+	$name  = isset($item->name) ? $item->name : $item->id;
+	$label = isset($item->volumeNumber) ? format_volume($item->volumeNumber) : '';
+
+	display_html_start(trim($name . ' ' . $label) . ' - ' . $config['site_name'], $item);
+	display_navbar('');
+	display_main_start();
+
+	// Each article's colour (one of ten, in turn, so neighbours differ), and its pages
+	$colour = array();
+	$pages  = array();
+	foreach ($item->hasPart as $i => $part)
+	{
+		$colour[$part->id] = $i % 10;
+		$pages[$part->id]  = 0;
+	}
+
+	$in_articles = 0;
+	$orphans     = 0;
+	foreach ($item->itemListElement as $element)
+	{
+		$page = $element->item;
+		if (isset($page->isPartOf))
+		{
+			$in_articles++;
+			foreach ($page->isPartOf as $part)
+			{
+				if (isset($pages[$part->id]))
+				{
+					$pages[$part->id]++;
+				}
+			}
+		}
+		elseif (isset($page->genre) && in_array('Illustration', $page->genre))
+		{
+			$orphans++;
+		}
+	}
+
+	$titles = is_array($item->isPartOf) ? $item->isPartOf : array();
+
+	echo '<div class="results">';
+
+	echo '<div class="title-header">';
+	if (isset($item->thumbnailUrl))
+	{
+		echo '<img class="title-thumbnail" src="' . htmlspecialchars($item->thumbnailUrl) . '" alt="">';
+	}
+	echo '<div>';
+	echo '<h1>' . htmlspecialchars($label != '' ? $label : $name) . '</h1>';
+	if (count($titles) > 0)
+	{
+		$links = array();
+		foreach ($titles as $title)
+		{
+			$links[] = array(isset($title->name) ? $title->name : $title->id, local_page_url($title->id));
+		}
+		echo '<p class="hit-meta">' . display_labels($links) . '</p>';
+	}
+	echo '</div>';
+	echo '</div>';
+
+	$n = $item->numberOfItems;
+
+	echo '<dl class="title-summary">';
+	display_summary_row('Year', isset($item->datePublished) ? htmlspecialchars($item->datePublished) : '');
+	display_summary_row('Pages', number_format($n));
+	display_summary_row('Articles', number_format(count($item->hasPart)));
+	display_summary_row('In articles', $n > 0 ? number_format($in_articles) . ' of ' . number_format($n) . ' pages (' . round(100 * $in_articles / $n) . '%)' : '');
+	display_summary_row('Unassigned plates', $orphans > 0 ? number_format($orphans) . ' illustration page' . ($orphans == 1 ? '' : 's') . ' not in any article' : '');
+	display_summary_row('Library', isset($item->provider->name) ? htmlspecialchars($item->provider->name) : '');
+	display_summary_row('Copyright', isset($item->copyrightNotice) ? htmlspecialchars($item->copyrightNotice) : '');
+	display_summary_row('Licence', isset($item->license) ? '<a href="' . htmlspecialchars($item->license) . '">' . htmlspecialchars(license_label($item->license)) . '</a>' : '');
+	display_summary_row('Rights holder', isset($item->copyrightHolder->name) ? htmlspecialchars($item->copyrightHolder->name) : '');
+	display_summary_row('BHL', '<a href="' . htmlspecialchars($item->id) . '">' . htmlspecialchars($item->id) . '</a>');
+	echo '</dl>';
+
+	if ($n == 0)
+	{
+		echo '<p class="results-summary">No pages of this item are in the index.</p>';
+	}
+	else
+	{
+		// Article names, for tooltips
+		$names = array();
+		foreach ($item->hasPart as $part)
+		{
+			$names[$part->id] = isset($part->name) ? $part->name : $part->id;
+		}
+
+		// Background for a page: its article's colour, two colours split diagonally for a
+		// page in two articles, or the hatching for a page in none
+		$page_style = function ($page) use ($colour) {
+			$parts = array();
+			if (isset($page->isPartOf))
+			{
+				foreach ($page->isPartOf as $part)
+				{
+					if (isset($colour[$part->id]))
+					{
+						$parts[] = $part->id;
+					}
+				}
+			}
+
+			$classes = array();
+			$style   = '';
+			if (count($parts) == 0)
+			{
+				$classes[] = 'coverage-none';
+			}
+			elseif (count($parts) == 1)
+			{
+				$style = 'background:var(--part-' . $colour[$parts[0]] . ')';
+			}
+			else
+			{
+				$style = 'background:linear-gradient(135deg, var(--part-' . $colour[$parts[0]] . ') 50%, var(--part-' . $colour[$parts[1]] . ') 50%)';
+			}
+
+			if (isset($page->genre) && in_array('Illustration', $page->genre))
+			{
+				$classes[] = 'coverage-plate';
+			}
+
+			return array($classes, $style, $parts);
+		};
+
+		$tooltip = function ($page, $parts) use ($names) {
+			$text = isset($page->name) ? $page->name : $page->id;
+			if (isset($page->genre))
+			{
+				$text .= ' · ' . implode(', ', $page->genre);
+			}
+			if (count($parts) == 0)
+			{
+				$text .= ' · not in an article';
+			}
+			foreach ($parts as $id)
+			{
+				$text .= ' · ' . $names[$id];
+			}
+			return $text;
+		};
+
+		echo '<h2>Coverage</h2>';
+		echo '<p class="hit-meta">Each page in scan order, coloured by the article it is in. '
+			. '<span class="coverage-key coverage-none"></span> not in an article, '
+			. '<span class="coverage-key coverage-plate-key"></span> illustration.</p>';
+
+		// The whole item in one strip, then every page
+		echo '<div class="coverage-strip" role="img" aria-label="' . number_format($in_articles) . ' of ' . number_format($n) . ' pages are in articles">';
+		foreach ($item->itemListElement as $element)
+		{
+			list($classes, $style, $parts) = $page_style($element->item);
+			$text = $tooltip($element->item, $parts);
+			echo '<span class="' . implode(' ', $classes) . '" style="' . $style . '" data-parts="' . htmlspecialchars(implode(' ', $parts)) . '" title="' . htmlspecialchars($text) . '"></span>';
+		}
+		echo '</div>';
+
+		echo '<div class="coverage-pages">';
+		foreach ($item->itemListElement as $element)
+		{
+			$page = $element->item;
+			list($classes, $style, $parts) = $page_style($page);
+			$text = $tooltip($page, $parts);
+
+			echo '<a class="coverage-page ' . implode(' ', $classes) . '" style="' . $style . '" data-parts="' . htmlspecialchars(implode(' ', $parts)) . '" href="' . htmlspecialchars($page->id) . '" title="' . htmlspecialchars($text) . '">';
+			echo '<span class="coverage-image">';
+			if (isset($page->thumbnailUrl))
+			{
+				echo '<img loading="lazy" src="' . htmlspecialchars($page->thumbnailUrl) . '" alt="">';
+			}
+			echo '</span>';
+			// A short label: "12" for "Page 12", "Pl. I" for "Vol. XV, Pl. I"; the tooltip has it all
+			$short = isset($page->name) ? preg_replace(array('/^Page /', '/^.*, /'), '', $page->name) : $element->position;
+			echo '<span class="coverage-label">' . htmlspecialchars($short) . '</span>';
+			echo '</a>';
+		}
+		echo '</div>';
+	}
+
+	if (count($item->hasPart) > 0)
+	{
+		echo '<h2>' . number_format(count($item->hasPart)) . ' article' . (count($item->hasPart) == 1 ? '' : 's') . '</h2>';
+		echo '<ol class="coverage-articles">';
+		foreach ($item->hasPart as $part)
+		{
+			$meta = array();
+			if (isset($part->pagination)) { $meta[] = 'pp. ' . $part->pagination; }
+			$meta[] = number_format($pages[$part->id]) . ' page' . ($pages[$part->id] == 1 ? '' : 's') . ' in this item';
+
+			echo '<li data-parts="' . htmlspecialchars($part->id) . '">';
+			echo '<span class="coverage-key" style="background:var(--part-' . $colour[$part->id] . ')"></span>';
+			echo '<div>';
+			echo '<a href="' . htmlspecialchars($part->id) . '">' . htmlspecialchars(isset($part->name) ? $part->name : $part->id) . '</a>';
+			if (isset($part->author))
+			{
+				$authors = array();
+				foreach ($part->author as $author)
+				{
+					$authors[] = $author->name;
+				}
+				echo '<p class="group-authors">' . htmlspecialchars(implode('; ', $authors)) . '</p>';
+			}
+			echo '<p class="hit-meta">' . htmlspecialchars(implode(' · ', $meta)) . '</p>';
+			echo '</div>';
+			echo '</li>';
+		}
+		echo '</ol>';
+	}
+
+	echo '<p class="results-summary"><a href="api.php?item=' . (int)$itemid . '">JSON-LD</a></p>';
+
+	echo '</div>';
+
+	display_main_end();
+
+	// Hovering a page or an article highlights all the pages of its article(s)
+	echo '<script>
+	document.querySelectorAll("[data-parts]").forEach(function (el) {
+		function mark(on) {
+			el.dataset.parts.split(" ").filter(Boolean).forEach(function (id) {
+				document.querySelectorAll("[data-parts~=\'" + id + "\']").forEach(function (other) {
+					other.classList.toggle("coverage-active", on);
+				});
+			});
+		}
+		el.addEventListener("mouseenter", function () { mark(true); });
+		el.addEventListener("mouseleave", function () { mark(false); });
+	});
+	</script>';
+
 	display_html_end();
 }
 
@@ -635,6 +894,13 @@ function main()
 	{
 		$view = isset($_GET['view']) && $_GET['view'] == 'list' ? 'list' : 'grid';
 		display_title((int)$_GET['title'], $view);
+		exit(0);
+	}
+
+	// Show an item
+	if (isset($_GET['item']))
+	{
+		display_item((int)$_GET['item']);
 		exit(0);
 	}
 

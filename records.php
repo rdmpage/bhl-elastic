@@ -106,4 +106,145 @@ function get_title($titleid)
 	return $work;
 }
 
+//----------------------------------------------------------------------------------------
+// An item (a scanned volume), its articles and all its pages, as JSON-LD, or null if
+// there is no such item. $itemid is BHL's number, e.g. 222763.
+//
+// The item is a PublicationVolume (see item_to_jsonld() in search.php) whose articles
+// are in hasPart, in their order in the item. It is also an ItemList of its pages, in
+// scan order (position is the page's sequence number). Each page is a CreativeWork
+// named by its printed page label, its genre the page types BHL gives it ("Text",
+// "Illustration", ...), and isPartOf the articles it is in, if any, so pages can be
+// mapped onto articles to show coverage.
+function get_item($itemid)
+{
+	global $config;
+
+	$elastic = new ElasticSearch($config['elastic_options']);
+
+	$id = 'item_' . (int)$itemid;
+
+	$docs = fetch_docs($elastic, array($id), array('titleid', 'volume', 'year', 'thumbnail', 'institutions', 'copyright', 'license', 'rights_holder'));
+
+	if (!isset($docs[$id]))
+	{
+		return null;
+	}
+
+	$item     = $docs[$id];
+	$titleids = isset($item->titleid) ? $item->titleid : array();
+	$titles   = fetch_docs($elastic, $titleids, array('name'));
+
+	$work = item_to_jsonld($id, $item, $titleids, $titles);
+	$work = (object)array_merge(array('@context' => create_context()), (array)$work);
+
+	if (isset($item->institutions))
+	{
+		$work->provider = (object)array('type' => 'Organization', 'name' => $item->institutions[0]);
+	}
+	if (isset($item->copyright))     { $work->copyrightNotice = $item->copyright; }
+	if (isset($item->license))       { $work->license = $item->license; }
+	if (isset($item->rights_holder)) { $work->copyrightHolder = (object)array('name' => $item->rights_holder); }
+
+	// Articles and pages. No item has more than a few thousand pages, well under
+	// Elasticsearch's limit of 10,000 hits.
+	$hits = array();
+	foreach (array('part', 'page') as $type)
+	{
+		$query = array(
+			'size' => 10000,
+			'query' => array(
+				'bool' => array(
+					'filter' => array(
+						array('term' => array('type' => $type)),
+						array('term' => array('itemid' => $id)),
+					)
+				)
+			),
+			'_source' => $type == 'part'
+				? array('seq', 'name', 'authors', 'container', 'tags', 'volume', 'issue', 'year', 'pages', 'doi', 'thumbnail')
+				: array('seq', 'name', 'tags', 'thumbnail', 'partid'),
+			'sort' => array(array('seq' => array('order' => 'asc', 'missing' => '_last'))),
+		);
+
+		$resp = $elastic->send('POST', '_search', json_encode($query));
+
+		if ($resp[0] != 200)
+		{
+			throw new Exception('Search failed (HTTP ' . $resp[0] . ')');
+		}
+
+		$hits[$type] = $resp[1]->hits->hits;
+	}
+
+	// Articles, in the order of their first page (their own sequence numbers are not
+	// always set); their container is this item, so isPartOf is left out
+	$first = array();
+	foreach ($hits['page'] as $i => $hit)
+	{
+		if (isset($hit->_source->partid))
+		{
+			foreach ($hit->_source->partid as $partid)
+			{
+				if (!isset($first[$partid]))
+				{
+					$first[$partid] = $i;
+				}
+			}
+		}
+	}
+
+	usort($hits['part'], function ($a, $b) use ($first) {
+		$first_a = isset($first[$a->_id]) ? $first[$a->_id] : PHP_INT_MAX;
+		$first_b = isset($first[$b->_id]) ? $first[$b->_id] : PHP_INT_MAX;
+		if ($first_a != $first_b)
+		{
+			return $first_a < $first_b ? -1 : 1;
+		}
+		return id_number($a->_id) - id_number($b->_id);
+	});
+
+	$work->hasPart = array();
+	foreach ($hits['part'] as $hit)
+	{
+		$part = part_to_jsonld($hit->_id, $hit->_source, $titleids, $titles);
+		unset($part->isPartOf);
+		$work->hasPart[] = $part;
+	}
+
+	// Pages
+	$work->type = array($work->type, 'ItemList');
+	$work->numberOfItems = count($hits['page']);
+	$work->itemListElement = array();
+
+	foreach ($hits['page'] as $hit)
+	{
+		$page = new stdclass;
+		$page->id   = 'https://www.biodiversitylibrary.org/page/' . id_number($hit->_id);
+		$page->type = 'CreativeWork';
+
+		if (isset($hit->_source->name))      { $page->name = $hit->_source->name; }
+		if (isset($hit->_source->thumbnail)) { $page->thumbnailUrl = $hit->_source->thumbnail; }
+		if (isset($hit->_source->tags))      { $page->genre = $hit->_source->tags; }
+
+		if (isset($hit->_source->partid))
+		{
+			$page->isPartOf = array();
+			foreach ($hit->_source->partid as $partid)
+			{
+				$page->isPartOf[] = (object)array('id' => 'https://www.biodiversitylibrary.org/part/' . id_number($partid));
+			}
+		}
+
+		$element = new stdclass;
+		$element->type = 'ListItem';
+		$element->position = isset($hit->_source->seq) ? $hit->_source->seq : count($work->itemListElement) + 1;
+		$element->item = $page;
+
+		$work->itemListElement[] = $element;
+	}
+
+	return $work;
+}
+
 ?>

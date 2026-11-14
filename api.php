@@ -7,6 +7,7 @@
 //   api.php?q=Rhacophorus&pages=10     (matching pages listed per result, up to 100)
 //   api.php?q=Dillon+1984+Flourensia&type=articles   (search article metadata)
 //   api.php?title=9243                  (a title and its items)
+//   api.php?item=222763                 (an item, its articles and its pages)
 
 error_reporting(E_ALL);
 
@@ -36,6 +37,20 @@ function main()
 		{
 			$title = get_title((int)$_GET['title']);
 			$title ? send_json(200, $title) : send_json(404, array('error' => 'No such title'));
+		}
+		catch (Exception $e)
+		{
+			send_json(502, array('error' => $e->getMessage()));
+		}
+		return;
+	}
+
+	if (isset($_GET['item']))
+	{
+		try
+		{
+			$item = get_item((int)$_GET['item']);
+			$item ? send_json(200, $item) : send_json(404, array('error' => 'No such item'));
 		}
 		catch (Exception $e)
 		{

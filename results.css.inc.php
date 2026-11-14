@@ -357,3 +357,135 @@
 	transform: translateX(-50%);
 	white-space: nowrap;
 }
+
+/* Item coverage: pages coloured by article. Colours are Vega's tableau10, used in turn,
+   so neighbouring articles differ; hatching marks pages in no article. */
+:root {
+	--part-0: #4c78a8;
+	--part-1: #f58518;
+	--part-2: #e45756;
+	--part-3: #72b7b2;
+	--part-4: #54a24b;
+	--part-5: #eeca3b;
+	--part-6: #b279a2;
+	--part-7: #ff9da6;
+	--part-8: #9d755d;
+	--part-9: #bab0ac;
+	--coverage-hatch: repeating-linear-gradient(45deg, var(--thumbnail-bg) 0 4px, var(--border-color) 4px 6px);
+}
+
+.coverage-none {
+	background: var(--coverage-hatch);
+}
+
+.coverage-key {
+	display: inline-block;
+	width: 1em;
+	height: 1em;
+	border-radius: 2px;
+	vertical-align: -0.15em;
+	flex: none;
+}
+
+.coverage-plate-key {
+	border: 2px solid var(--text);
+	box-sizing: border-box;
+}
+
+.coverage-strip {
+	display: flex;
+	height: 28px;
+	gap: 0;
+	margin: 0.5em 0 1em 0;
+	border-radius: 4px;
+	overflow: hidden;
+}
+
+.coverage-strip span {
+	flex: 1 1 0;
+	min-width: 0;
+}
+
+.coverage-strip .coverage-plate {
+	box-shadow: inset 0 -6px 0 var(--text);
+}
+
+.coverage-pages {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+	gap: 2px;
+}
+
+.coverage-pages .coverage-page {
+	display: block;
+	padding: 5px 5px 2px 5px;
+	border-radius: 4px;
+	text-decoration: none;
+	color: var(--text);
+}
+
+/* transparent, so the article colour fills the space round a letterboxed image */
+.coverage-image {
+	display: block;
+	aspect-ratio: 2 / 3;
+}
+
+.coverage-image img {
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
+	display: block;
+}
+
+.coverage-label {
+	display: block;
+	font-size: 0.7em;
+	text-align: center;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	margin-top: 2px;
+}
+
+/* the label sits on the article colour, so give it the page background */
+.coverage-page .coverage-label {
+	background-color: var(--bg);
+	border-radius: 2px;
+}
+
+.coverage-page.coverage-plate .coverage-image {
+	outline: 2px solid var(--text);
+	outline-offset: -2px;
+}
+
+.coverage-active {
+	filter: brightness(1.15);
+	outline: 2px solid var(--text);
+	outline-offset: -2px;
+}
+
+.coverage-articles {
+	padding-left: 0;
+	list-style: none;
+}
+
+.coverage-articles li {
+	display: flex;
+	gap: 0.6em;
+	align-items: flex-start;
+	padding: 0.4em;
+	border-radius: 4px;
+}
+
+.coverage-articles li .coverage-key {
+	margin-top: 0.2em;
+}
+
+.coverage-articles li.coverage-active {
+	filter: none;
+	background-color: var(--thumbnail-bg);
+}
+
+.coverage-articles p {
+	margin: 0.1em 0 0 0;
+}
