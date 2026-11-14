@@ -34,8 +34,9 @@ foreach (file($file, FILE_IGNORE_NEW_LINES) as $line)
 	foreach ($list->itemListElement as $element)
 	{
 		$work = $element->item;
-		printf("  %6.1f  %s [%s] %s\n",
-			$element->resultScore,
+		// Titles are listed by name, so have no score
+		printf("  %6s  %s [%s] %s\n",
+			isset($element->resultScore) ? number_format($element->resultScore, 1) : '-',
 			mb_strimwidth(isset($work->name) ? $work->name : $work->id, 0, 70, '…'),
 			isset($work->datePublished) ? $work->datePublished : '',
 			$work->id);

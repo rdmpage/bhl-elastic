@@ -6,6 +6,8 @@
 //   api.php?q=new+species+Borneo&from=20
 //   api.php?q=Rhacophorus&pages=10     (matching pages listed per result, up to 100)
 //   api.php?q=Dillon+1984+Flourensia&type=articles   (search article metadata)
+//   api.php?type=titles&decade=1890&q=zoology   (browse titles, with counts; filters
+//                                       are decade, kind, language, library, subject)
 //   api.php?title=9243                  (a title and its items)
 //   api.php?item=222763                 (an item, its articles and its pages)
 
@@ -59,7 +61,8 @@ function main()
 		return;
 	}
 
-	if ($q == '')
+	// Titles can be browsed without a query
+	if ($q == '' && $type != 'titles')
 	{
 		send_json(400, array('error' => 'Give a query as q'));
 		return;
@@ -67,7 +70,8 @@ function main()
 
 	try
 	{
-		send_json(200, run_search($type, $q, $from, 20, $pages));
+		$size = $type == 'titles' ? 48 : 20;
+		send_json(200, run_search($type, $q, $from, $size, $pages, title_filters($_GET)));
 	}
 	catch (Exception $e)
 	{

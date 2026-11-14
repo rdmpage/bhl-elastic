@@ -11,12 +11,17 @@ require_once (dirname(__FILE__) . '/html.php');
 // php -S localhost:4000
 
 //----------------------------------------------------------------------------------------
-// Tabs for the kinds of search; each re-runs the same query.
+// Tabs for the kinds of search (those marked as tabs); each re-runs the same query.
 function display_tabs($q, $type)
 {
 	echo '<ul class="tabs">';
 	foreach (search_types() as $key => $search_type)
 	{
+		if (!$search_type['tab'])
+		{
+			continue;
+		}
+
 		$params = array('q' => $q);
 		if ($key != 'all')
 		{
@@ -48,7 +53,9 @@ function default_display($error_msg = '')
 	}
 	else
 	{
-		echo '<h1>Hi!</h1>';
+		echo '<h1>BHL in Elastic</h1>';
+		echo '<p>An interface to the Biodiversity Heritage Library, 
+		based on a subset of titles and items from <a href="https://iphylo.org/bhl-light">BHL-Light</a></p>';
 	}
 
 	display_main_end();
@@ -324,6 +331,310 @@ function display_search($q, $type = 'all', $from = 0)
 	echo '</div>';
 
 	display_main_end();
+	display_html_end();
+}
+
+//----------------------------------------------------------------------------------------
+// Decades as a small histogram whose bars link to that decade (or, for the decade
+// chosen, back to all of them). Decades with no titles are empty gaps.
+function display_decade_facet($facet, $selected, $q, $filters)
+{
+	$counts = array();
+	$urls   = array();
+	foreach ($facet->itemListElement as $subset)
+	{
+		$counts[(int)$subset->identifier] = $subset->numberOfItems;
+		$urls[(int)$subset->identifier]   = $subset->url;
+	}
+
+	if (count($counts) == 0)
+	{
+		return;
+	}
+
+	$first = min(array_keys($counts));
+	$last  = max(array_keys($counts));
+	$most  = max($counts);
+	$span  = ($last - $first) / 10 + 1;
+
+	echo '<h3>' . htmlspecialchars($facet->name) . '</h3>';
+	echo '<div class="histogram facet-histogram">';
+	echo '<div class="histogram-bars">';
+	for ($decade = $first; $decade <= $last; $decade += 10)
+	{
+		$count = isset($counts[$decade]) ? $counts[$decade] : 0;
+		$label = $decade . 's: ' . number_format($count) . ' title' . ($count == 1 ? '' : 's');
+
+		if ($count == 0)
+		{
+			echo '<span class="histogram-year" data-label="' . $label . '"></span>';
+			continue;
+		}
+
+		$is_selected = $selected !== null && (int)$selected == $decade;
+		$href = $is_selected ? titles_url($q, array_diff_key($filters, array('decade' => 1))) : $urls[$decade];
+
+		echo '<a class="histogram-year' . ($is_selected ? ' selected' : '') . '" href="' . htmlspecialchars($href) . '" data-label="' . $label . '" title="' . $label . '">';
+		echo '<span class="histogram-bar" style="height:' . round(100 * $count / $most) . '%"></span>';
+		echo '</a>';
+	}
+	echo '</div>';
+
+	// Labels at the first decade, the last, and each half century in between
+	echo '<div class="histogram-axis">';
+	$labels = array($first);
+	for ($decade = $first + 10; $decade < $last; $decade += 10)
+	{
+		if ($decade % 50 == 0 && $decade - $first >= 30 && $last - $decade >= 30)
+		{
+			$labels[] = $decade;
+		}
+	}
+	if ($last != $first)
+	{
+		$labels[] = $last;
+	}
+	foreach ($labels as $decade)
+	{
+		$left = 100 * (($decade - $first) / 10 + 0.5) / $span;
+		echo '<span style="left:' . round($left, 2) . '%">' . $decade . 's</span>';
+	}
+	echo '</div>';
+	echo '</div>';
+}
+
+//----------------------------------------------------------------------------------------
+// One facet as a list of values with counts. The value chosen links back to all values.
+function display_facet($facet, $selected, $q, $filters)
+{
+	if (count($facet->itemListElement) == 0)
+	{
+		return;
+	}
+
+	echo '<h3>' . htmlspecialchars($facet->name) . '</h3>';
+	echo '<ul class="facet">';
+	foreach ($facet->itemListElement as $subset)
+	{
+		$is_selected = $selected !== null && (string)$selected == $subset->identifier;
+		$href = $is_selected ? titles_url($q, array_diff_key($filters, array($facet->identifier => 1))) : $subset->url;
+
+		echo '<li' . ($is_selected ? ' class="selected"' : '') . '>';
+		echo '<a href="' . htmlspecialchars($href) . '" title="' . htmlspecialchars($subset->name) . '">';
+		echo '<span class="facet-name">' . htmlspecialchars($subset->name) . '</span>';
+		echo '<span class="facet-count">' . ($is_selected ? '✕' : number_format($subset->numberOfItems)) . '</span>';
+		echo '</a>';
+		echo '</li>';
+	}
+	echo '</ul>';
+}
+
+//----------------------------------------------------------------------------------------
+// Title tiles: cover and name, linking to the title page, then a "Load more" tile if
+// there are more titles.
+function display_title_tiles($list, $q, $filters, $from, $size)
+{
+	foreach ($list->itemListElement as $element)
+	{
+		$title = $element->item;
+		$href  = local_page_url($title->id);
+		$name  = isset($title->name) ? $title->name : $title->id;
+
+		$years = '';
+		if (isset($title->startDate))
+		{
+			$end = isset($title->endDate) ? $title->endDate : $title->startDate;
+			$years = $title->startDate == $end ? $title->startDate : $title->startDate . '–' . $end;
+		}
+		elseif (isset($title->datePublished))
+		{
+			$years = $title->datePublished;
+		}
+
+		echo '<div class="page-hit">';
+		echo '<a class="page-thumbnail" href="' . htmlspecialchars($href) . '">';
+		if (isset($title->thumbnailUrl))
+		{
+			echo '<img loading="lazy" src="' . htmlspecialchars($title->thumbnailUrl) . '" alt="">';
+		}
+		echo '</a>';
+		echo '<div class="page-body">';
+		echo '<a class="page-name" href="' . htmlspecialchars($href) . '">' . htmlspecialchars($name) . '</a>';
+		if ($years != '')
+		{
+			echo '<p class="tile-meta">' . htmlspecialchars($years) . '</p>';
+		}
+		echo '</div>';
+		echo '</div>';
+	}
+
+	if ($from + $size < $list->numberOfItems)
+	{
+		$next = titles_url($q, $filters) . '&from=' . ($from + $size);
+		echo '<a class="load-more" href="' . htmlspecialchars($next) . '">Load more</a>';
+	}
+}
+
+//----------------------------------------------------------------------------------------
+// Browse titles: facets down the side (decade, kind, language, library, subject) and a
+// text filter, with a grid of titles in order of name. Choosing a facet value is a link,
+// so every view can be bookmarked; with JavaScript the text filter updates the list as
+// you type, and "Load more" adds the next titles to the grid. Rendered from the same
+// JSON-LD that api.php returns.
+function display_titles($q, $filters, $from = 0)
+{
+	global $config;
+
+	$size = 48;
+
+	$error = '';
+	$list  = null;
+
+	try
+	{
+		$list = json_decode(json_encode(search_titles($q, $from, $size, $filters)));
+	}
+	catch (Exception $e)
+	{
+		$error = $e->getMessage();
+	}
+
+	display_html_start(($q != '' ? $q . ' - ' : '') . 'Titles - ' . $config['site_name'], $list);
+	display_navbar('');
+	display_main_start();
+
+	echo '<div class="browser">';
+
+	if ($error != '')
+	{
+		echo '<div class="error">' . htmlspecialchars($error) . '</div>';
+	}
+	else
+	{
+		echo '<div class="browser-columns">';
+
+		// Facets, with the text filter, which keeps the facets chosen
+		echo '<aside class="facets" id="facets">';
+		echo '<form id="title-filter" method="get" action="index.php">';
+		echo '<input type="hidden" name="type" value="titles">';
+		foreach ($filters as $key => $value)
+		{
+			echo '<input type="hidden" name="' . htmlspecialchars($key) . '" value="' . htmlspecialchars($value) . '">';
+		}
+		echo '<input class="facet-filter" type="search" name="q" placeholder="Filter titles, e.g. zoology" value="' . htmlspecialchars($q) . '" autocomplete="off">';
+		echo '</form>';
+
+		// On a phone the facets fold away under "Refine", so the titles come first
+		echo '<details class="facet-details" id="facet-details" open><summary>Refine</summary>';
+		echo '<div id="facet-lists">';
+		foreach ($list->hasPart as $facet)
+		{
+			$selected = isset($filters[$facet->identifier]) ? $filters[$facet->identifier] : null;
+			if ($facet->identifier == 'decade')
+			{
+				display_decade_facet($facet, $selected, $q, $filters);
+			}
+			else
+			{
+				display_facet($facet, $selected, $q, $filters);
+			}
+		}
+		echo '</div>';
+		echo '</details>';
+		echo '</aside>';
+
+		echo '<section class="browser-results" id="browser-results">';
+
+		// What is shown, with each choice removable
+		$n = $list->numberOfItems;
+		echo '<p class="results-summary">' . number_format($n) . ' title' . ($n == 1 ? '' : 's');
+		$labels = array();
+		if ($q != '')
+		{
+			$labels[] = '“' . htmlspecialchars($q) . '” <a href="' . htmlspecialchars(titles_url('', $filters)) . '" title="Remove">✕</a>';
+		}
+		foreach ($list->hasPart as $facet)
+		{
+			if (isset($filters[$facet->identifier]))
+			{
+				$value = facet_value_label($facet->identifier, $filters[$facet->identifier]);
+				$labels[] = htmlspecialchars($value) . ' <a href="' . htmlspecialchars(titles_url($q, array_diff_key($filters, array($facet->identifier => 1)))) . '" title="Remove">✕</a>';
+			}
+		}
+		if (count($labels) > 0)
+		{
+			echo ' · ' . implode(' · ', $labels);
+		}
+		$api = 'api.php' . substr(titles_url($q, $filters), strlen($config['web_root']));
+		echo ' · <a href="' . htmlspecialchars($api . ($from > 0 ? '&from=' . $from : '')) . '">JSON-LD</a></p>';
+
+		if ($n == 0)
+		{
+			echo '<p>No titles match. Remove a choice above, or try other words.</p>';
+		}
+
+		echo '<div class="items items-grid title-grid" id="title-grid">';
+		display_title_tiles($list, $q, $filters, $from, $size);
+		echo '</div>';
+
+		echo '</section>';
+		echo '</div>';
+	}
+
+	echo '</div>';
+
+	display_main_end();
+
+	// The text filter reloads the facets and results after a pause in typing, and "Load
+	// more" appends the next titles; both fetch this page and take parts of it.
+	echo '<script>
+	(function () {
+		function get(url, then) {
+			fetch(url).then(function (r) { return r.text(); }).then(function (html) {
+				then(new DOMParser().parseFromString(html, "text/html"));
+			});
+		}
+
+		var details = document.getElementById("facet-details");
+		if (details && window.matchMedia("(max-width: 700px)").matches) {
+			details.open = false;
+		}
+
+		var form = document.getElementById("title-filter");
+		if (form) {
+			var timer = null;
+			var latest = "";
+			form.q.addEventListener("input", function () {
+				clearTimeout(timer);
+				timer = setTimeout(function () {
+					var url = "?" + new URLSearchParams(new FormData(form)).toString();
+					latest = url;
+					get(url, function (doc) {
+						if (url != latest) { return; }
+						document.getElementById("facet-lists").replaceWith(doc.getElementById("facet-lists"));
+						document.getElementById("browser-results").replaceWith(doc.getElementById("browser-results"));
+						history.replaceState(null, "", url);
+					});
+				}, 400);
+			});
+		}
+
+		document.addEventListener("click", function (event) {
+			var more = event.target.closest(".load-more");
+			if (!more) { return; }
+			event.preventDefault();
+			more.textContent = "Loading…";
+			get(more.getAttribute("href"), function (doc) {
+				var grid = doc.getElementById("title-grid");
+				while (grid.firstChild) {
+					more.parentNode.insertBefore(grid.firstChild, more);
+				}
+				more.remove();
+			});
+		});
+	})();
+	</script>';
+
 	display_html_end();
 }
 
@@ -901,6 +1212,16 @@ function main()
 	if (isset($_GET['item']))
 	{
 		display_item((int)$_GET['item']);
+		exit(0);
+	}
+
+	// Browse titles, with or without a text filter
+	if (isset($_GET['type']) && $_GET['type'] == 'titles')
+	{
+		$query = isset($_GET['q']) ? trim($_GET['q']) : '';
+		$from  = isset($_GET['from']) ? max(0, (int)$_GET['from']) : 0;
+
+		display_titles($query, title_filters($_GET), $from);
 		exit(0);
 	}
 

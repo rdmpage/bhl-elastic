@@ -56,7 +56,8 @@ function last_year($value)
 
 //----------------------------------------------------------------------------------------
 // BHL's language codes (MARC, e.g. "ENG") as two-letter codes (BCP 47, as schema.org's
-// inLanguage expects), with names to display. Codes not listed are kept in lower case;
+// inLanguage expects; three letters where there is no two-letter code), with names to
+// display. These cover all but a handful of titles. Codes not listed are kept in lower case;
 // "und" (undetermined) and "mul" (multiple) are left out.
 function bhl_languages()
 {
@@ -82,6 +83,23 @@ function bhl_languages()
 		'RUM' => array('ro', 'Romanian'),
 		'CAT' => array('ca', 'Catalan'),
 		'UKR' => array('uk', 'Ukrainian'),
+		'YID' => array('yi', 'Yiddish'),
+		'FIN' => array('fi', 'Finnish'),
+		'SCR' => array('hr', 'Croatian'),
+		'SCC' => array('sr', 'Serbian'),
+		'HEB' => array('he', 'Hebrew'),
+		'GRE' => array('el', 'Greek'),
+		'GLE' => array('ga', 'Irish'),
+		'SAN' => array('sa', 'Sanskrit'),
+		'PER' => array('fa', 'Persian'),
+		'ICE' => array('is', 'Icelandic'),
+		'BUL' => array('bg', 'Bulgarian'),
+		'AFR' => array('af', 'Afrikaans'),
+		'WEL' => array('cy', 'Welsh'),
+		// no two-letter codes for these
+		'FRM' => array('frm', 'Middle French'),
+		'OTA' => array('ota', 'Ottoman Turkish'),
+		'GRC' => array('grc', 'Ancient Greek'),
 	);
 }
 

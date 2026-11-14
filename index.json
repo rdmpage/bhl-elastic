@@ -7,6 +7,12 @@
           "tokenizer": "standard",
           "filter": ["lowercase", "asciifolding"]
         }
+      },
+      "normalizer": {
+        "sort": {
+          "type": "custom",
+          "filter": ["lowercase", "asciifolding"]
+        }
       }
     }
   },
@@ -20,7 +26,7 @@
       "partid":       { "type": "keyword" },
       "group":        { "type": "keyword" },
       "seq":          { "type": "integer" },
-      "name":         { "type": "text", "analyzer": "folding", "index_options": "offsets", "fields": { "keyword": { "type": "keyword", "ignore_above": 256 } } },
+      "name":         { "type": "text", "analyzer": "folding", "index_options": "offsets", "fields": { "keyword": { "type": "keyword", "ignore_above": 256 }, "sort": { "type": "keyword", "normalizer": "sort", "ignore_above": 256 } } },
       "fullname":     { "type": "text", "analyzer": "folding" },
       "authors":      { "type": "text", "analyzer": "folding", "fields": { "keyword": { "type": "keyword", "ignore_above": 256 } } },
       "container":    { "type": "text", "analyzer": "folding" },
@@ -37,6 +43,8 @@
       "rights_holder": { "type": "keyword" },
       "year":         { "type": "integer" },
       "end_year":     { "type": "integer" },
+      "decades":      { "type": "integer" },
+      "item_count":   { "type": "integer" },
       "volume":       { "type": "keyword" },
       "issue":        { "type": "keyword" },
       "text":            { "type": "text", "analyzer": "folding", "index_options": "offsets" },

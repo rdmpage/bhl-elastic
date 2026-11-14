@@ -169,7 +169,8 @@ function part_docs($stmts, $pdo, $itemid, $titleids, $title_names)
 // Title document. Its thumbnail is that of its first item (lowest ItemID) that has one.
 //
 // tags holds the kind of title, Periodical (a serial in the catalogue record) or Book
-// (anything else). Years run from the first item to the last, as the title's own
+// (anything else). item_count is the number of its items, and decades the decades its
+// items span (1840, 1850, ...). Years run from the first item to the last, as the title's own
 // StartYear and EndYear are often missing. institutions are the libraries that
 // contributed its items, and copyright and license are gathered from its items too.
 function title_doc($stmts, $pdo, $titleid)
@@ -231,9 +232,18 @@ function title_doc($stmts, $pdo, $titleid)
 
 	set_field($doc, 'year',         count($years) > 0 ? min($years) : first_year($title['StartYear']));
 	set_field($doc, 'end_year',     count($years) > 0 ? max($years) : last_year($title['EndYear']));
+	set_field($doc, 'item_count',   count($items));
 	set_field($doc, 'institutions', array_values(array_unique(array_filter($institutions))));
 	set_field($doc, 'copyright',    array_values(array_unique($copyright)));
 	set_field($doc, 'license',      array_values(array_unique(array_filter($license))));
+
+	// Every decade the title spans, so browsing by decade finds titles running through
+	// it, not just those that started in it
+	if (isset($doc->year))
+	{
+		$end = isset($doc->end_year) ? $doc->end_year : $doc->year;
+		set_field($doc, 'decades', range(10 * floor($doc->year / 10), 10 * floor($end / 10), 10));
+	}
 
 	foreach ($items as $item)
 	{

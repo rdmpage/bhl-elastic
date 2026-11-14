@@ -569,54 +569,153 @@ function search_articles($q, $from = 0, $size = 20)
 }
 
 //----------------------------------------------------------------------------------------
-// Search the catalogue: titles (books and journals) by name, full title, authors and
-// subjects, all words of a short query or 75% of a longer one, across those fields
-// together, so "Hampson Lepidoptera" finds a title by Hampson about Lepidoptera. Titles
-// with the query as a phrase in their name rank first.
+// What titles can be filtered and counted by: the URL parameter, its label, the field,
+// and how many of the most frequent values to count. Decades are all counted, in order.
+function title_facets()
+{
+	return array(
+		'decade'   => array('label' => 'Decade',               'field' => 'decades',          'size' => 100),
+		'kind'     => array('label' => 'Kind',                 'field' => 'tags',             'size' => 10),
+		'language' => array('label' => 'Language',             'field' => 'language',         'size' => 10),
+		'library'  => array('label' => 'Contributing library', 'field' => 'institutions',     'size' => 10),
+		'subject'  => array('label' => 'Subject',              'field' => 'subjects.keyword', 'size' => 15),
+	);
+}
+
+//----------------------------------------------------------------------------------------
+// A facet value as people read it: "1890s", "Journal or serial", "French".
+function facet_value_label($facet, $value)
+{
+	switch ($facet)
+	{
+		case 'decade':
+			return $value . 's';
+		case 'kind':
+			return $value == 'Periodical' ? 'Journal or serial' : $value;
+		case 'language':
+			return language_name($value);
+		default:
+			return (string)$value;
+	}
+}
+
+//----------------------------------------------------------------------------------------
+// Facet filters from request parameters ($_GET), ignoring empty and unknown ones.
+function title_filters($params)
+{
+	$filters = array();
+	foreach (title_facets() as $key => $facet)
+	{
+		if (isset($params[$key]) && is_string($params[$key]) && trim($params[$key]) != '')
+		{
+			$filters[$key] = $key == 'decade' ? (int)$params[$key] : trim($params[$key]);
+		}
+	}
+	return $filters;
+}
+
+//----------------------------------------------------------------------------------------
+// URL of the titles list for a text filter and facet filters.
+function titles_url($q, $filters)
+{
+	global $config;
+
+	$params = array('type' => 'titles');
+	if ($q != '')
+	{
+		$params['q'] = $q;
+	}
+	foreach (title_facets() as $key => $facet)
+	{
+		if (isset($filters[$key]))
+		{
+			$params[$key] = $filters[$key];
+		}
+	}
+
+	return $config['web_root'] . '?' . http_build_query($params);
+}
+
+//----------------------------------------------------------------------------------------
+// Browse and search the catalogue: titles (books and journals), in order of name, with
+// counts for each facet (see title_facets()) over all the titles that match, not just
+// the ones returned.
 //
-// A query of the form "issn:0374-5481" (or oclc:, isbn:, wikidata: and the other names
-// in title_identifier_names()) finds titles by identifier instead.
+// $q is an optional text filter, matched against name, full title, authors and
+// subjects together, so "Hampson Lepidoptera" finds a title by Hampson about
+// Lepidoptera; all words of a short query must match, 75% of a longer one. A title also
+// matches if one field has all the words, the last as a prefix, so the list narrows as
+// someone types. Names sort ignoring case and accents. A query of
+// the form "issn:0374-5481" (or oclc:, isbn:, wikidata: and the other names in
+// title_identifier_names()) finds titles by identifier instead.
 //
-// Returns an ItemList of titles (Book or Periodical).
-function search_titles($q, $from = 0, $size = 20)
+// $filters maps facet parameters to one value each, e.g. array('decade' => 1890); all
+// must match.
+//
+// Returns an ItemList of titles (Book or Periodical). Each facet is in hasPart: an
+// ItemList (identifier is its parameter) of the subsets of these titles with each value,
+// each itself an ItemList with name, numberOfItems and the url that lists it;
+// identifier is the value as given in the url. The list, facets and subsets are also
+// Collections (CreativeWorks), as schema.org only allows hasPart on CreativeWorks, and
+// a subset of a set of titles is part of it.
+function search_titles($q, $from = 0, $size = 20, $filters = array())
 {
 	global $config;
 
 	$elastic = new ElasticSearch($config['elastic_options']);
 
-	$filter = array(array('term' => array('type' => 'title')));
+	$facets = title_facets();
 
-	if (preg_match('/^([a-z-]+):\s*(\S+)$/i', trim($q), $m)
+	$filter = array(array('term' => array('type' => 'title')));
+	foreach ($filters as $key => $value)
+	{
+		if (isset($facets[$key]))
+		{
+			$filter[] = array('term' => array($facets[$key]['field'] => $value));
+		}
+	}
+
+	$must = array();
+	$q = trim($q);
+
+	if (preg_match('/^([a-z-]+):\s*(\S+)$/i', $q, $m)
 		&& in_array(strtolower($m[1]), title_identifier_names()))
 	{
 		$filter[] = array('term' => array('identifiers' => strtolower($m[1]) . ':' . $m[2]));
-		$query = array('bool' => array('filter' => $filter));
 	}
-	else
+	elseif ($q != '')
 	{
-		$query = array(
+		// Words across fields, or all the words in one field with the last one as a
+		// prefix, so the list narrows as someone types ("entomolog")
+		$fields = array('name^3', 'fullname^2', 'authors', 'subjects');
+		$must[] = array(
 			'bool' => array(
-				'filter' => $filter,
-				'must' => array(
-					'multi_match' => array(
-						'query' => $q,
-						'type' => 'cross_fields',
-						'fields' => array('name^3', 'fullname^2', 'authors', 'subjects'),
-						'minimum_should_match' => '3<75%',
-					)
-				),
 				'should' => array(
-					'match_phrase' => array('name' => array('query' => $q, 'slop' => 3, 'boost' => 2))
+					array('multi_match' => array('query' => $q, 'type' => 'cross_fields', 'fields' => $fields, 'minimum_should_match' => '3<75%')),
+					array('multi_match' => array('query' => $q, 'type' => 'bool_prefix', 'fields' => $fields, 'operator' => 'and')),
 				),
+				'minimum_should_match' => 1,
 			)
 		);
+	}
+
+	$aggs = array();
+	foreach ($facets as $key => $facet)
+	{
+		$aggs[$key] = array('terms' => array('field' => $facet['field'], 'size' => $facet['size']));
+		if ($key == 'decade')
+		{
+			$aggs[$key]['terms']['order'] = array('_key' => 'asc');
+		}
 	}
 
 	$request = array(
 		'from' => $from,
 		'size' => $size,
 		'track_total_hits' => true,
-		'query' => $query,
+		'query' => array('bool' => array('filter' => $filter, 'must' => $must)),
+		'sort' => array(array('name.sort' => 'asc'), array('id' => 'asc')),
+		'aggs' => $aggs,
 		'_source' => title_fields(),
 	);
 
@@ -629,8 +728,9 @@ function search_titles($q, $from = 0, $size = 20)
 
 	$list = new stdclass;
 	$list->{'@context'} = create_context();
-	$list->type = 'ItemList';
-	$list->name = 'Titles matching "' . $q . '"';
+	$list->type = array('ItemList', 'Collection');
+	$list->name = $q != '' ? 'Titles matching "' . $q . '"' : 'Titles';
+	$list->url = titles_url($q, $filters);
 	$list->numberOfItems = $resp[1]->hits->total->value;
 	$list->itemListElement = array();
 
@@ -639,30 +739,57 @@ function search_titles($q, $from = 0, $size = 20)
 		$element = new stdclass;
 		$element->type = 'ListItem';
 		$element->position = $from + $i + 1;
-		$element->resultScore = $hit->_score;
 		$element->item = title_to_jsonld($hit->_id, $hit->_source);
 
 		$list->itemListElement[] = $element;
+	}
+
+	// Facets
+	$list->hasPart = array();
+	foreach ($facets as $key => $facet)
+	{
+		$part = new stdclass;
+		$part->type = array('ItemList', 'Collection');
+		$part->identifier = $key;
+		$part->name = $facet['label'];
+		$part->itemListElement = array();
+
+		foreach ($resp[1]->aggregations->{$key}->buckets as $bucket)
+		{
+			$subset = new stdclass;
+			$subset->type = array('ItemList', 'Collection');
+			$subset->identifier = (string)$bucket->key;
+			$subset->name = facet_value_label($key, $bucket->key);
+			$subset->numberOfItems = $bucket->doc_count;
+			$subset->url = titles_url($q, array_merge($filters, array($key => $bucket->key)));
+
+			$part->itemListElement[] = $subset;
+		}
+
+		$part->numberOfItems = count($part->itemListElement);
+		$list->hasPart[] = $part;
 	}
 
 	return $list;
 }
 
 //----------------------------------------------------------------------------------------
-// The kinds of search, as tabs on the web page and type= in the API. The first is the
-// default. "noun" describes what numberOfItems counts, and "one" a single result.
+// The kinds of search, as type= in the API. The first is the default. "noun" describes
+// what numberOfItems counts, and "one" a single result. Those with "tab" are tabs on
+// the web page; titles have the title browser instead.
 function search_types()
 {
 	return array(
-		'all'      => array('label' => 'All',      'noun' => 'articles and volumes', 'one' => 'article or volume'),
-		'articles' => array('label' => 'Articles', 'noun' => 'articles',             'one' => 'article'),
-		'titles'   => array('label' => 'Titles',   'noun' => 'titles',               'one' => 'title'),
+		'all'      => array('label' => 'All',      'noun' => 'articles and volumes', 'one' => 'article or volume', 'tab' => true),
+		'articles' => array('label' => 'Articles', 'noun' => 'articles',             'one' => 'article',           'tab' => true),
+		'titles'   => array('label' => 'Titles',   'noun' => 'titles',               'one' => 'title',             'tab' => false),
 	);
 }
 
 //----------------------------------------------------------------------------------------
 // Run a search of the given type, returning an ItemList.
-function run_search($type, $q, $from = 0, $size = 20, $pages_per_result = 3)
+// $filters only applies to titles (see search_titles()).
+function run_search($type, $q, $from = 0, $size = 20, $pages_per_result = 3, $filters = array())
 {
 	switch ($type)
 	{
@@ -670,7 +797,7 @@ function run_search($type, $q, $from = 0, $size = 20, $pages_per_result = 3)
 			return search_articles($q, $from, $size);
 
 		case 'titles':
-			return search_titles($q, $from, $size);
+			return search_titles($q, $from, $size, $filters);
 
 		case 'all':
 		default:

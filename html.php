@@ -87,6 +87,7 @@ function display_navbar($q, $type = 'all')
 	echo '<nav>
 	<ul>
 		<li><a href=".">Home</a></li>
+		<li><a href="index.php?type=titles">Titles</a></li>
 		<li><a href="match.php">Match</a></li>
 		<li class="search-item">
 			<form method="get" action="index.php">

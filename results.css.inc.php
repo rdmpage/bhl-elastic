@@ -493,3 +493,134 @@
 .coverage-articles p {
 	margin: 0.1em 0 0 0;
 }
+
+/* title browser: facets down the side, a grid of titles */
+.browser {
+	max-width: 72em;
+	margin: 0 auto;
+	padding: 0 1em 2em 1em;
+}
+
+.browser-columns {
+	display: grid;
+	grid-template-columns: 16em minmax(0, 1fr);
+	gap: 2em;
+}
+
+@media (max-width: 700px) {
+	.browser-columns {
+		grid-template-columns: minmax(0, 1fr);
+		gap: 0;
+	}
+}
+
+.facets h3 {
+	font-size: 0.9em;
+	margin: 1.2em 0 0.3em 0;
+}
+
+.facet-filter {
+	width: 100%;
+	box-sizing: border-box;
+	font: inherit;
+	margin-top: 1em;
+	padding: 0.3em 0.5em;
+	border: 1px solid var(--input-border);
+	border-radius: 4px;
+	background-color: var(--input-bg);
+	color: var(--input-color);
+}
+
+.facet {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	font-size: 0.85em;
+}
+
+.facet a {
+	display: flex;
+	gap: 0.5em;
+	padding: 0.15em 0.3em;
+	border-radius: 4px;
+	color: var(--text);
+	text-decoration: none;
+}
+
+.facet a:hover {
+	background-color: var(--thumbnail-bg);
+}
+
+.facet-name {
+	flex: 1 1 auto;
+	min-width: 0;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.facet-count {
+	flex: none;
+	color: var(--muted-text);
+}
+
+.facet li.selected a {
+	font-weight: bold;
+	background-color: var(--thumbnail-bg);
+}
+
+.facet-histogram .histogram-bars {
+	height: 50px;
+}
+
+.facet-histogram .histogram-year.selected .histogram-bar {
+	background-color: var(--text);
+	opacity: 1;
+}
+
+.facet-histogram .histogram-axis span:first-child {
+	transform: none;
+	left: 0 !important;
+}
+
+.facet-histogram .histogram-axis span:last-child {
+	transform: none;
+	left: auto !important;
+	right: 0;
+}
+
+.title-grid .tile-meta {
+	margin: 0;
+	font-size: 0.75em;
+	color: var(--muted-text);
+}
+
+.title-grid .page-name {
+	display: -webkit-box;
+	-webkit-line-clamp: 3;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+
+.load-more {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	aspect-ratio: 2 / 3;
+	border: 1px dashed var(--border-color);
+	border-radius: 4px;
+	font-size: 0.9em;
+}
+
+.facet-details summary {
+	display: none;
+}
+
+@media (max-width: 700px) {
+	.facet-details summary {
+		display: list-item;
+		margin-top: 0.8em;
+		color: var(--link-text);
+		cursor: pointer;
+	}
+}

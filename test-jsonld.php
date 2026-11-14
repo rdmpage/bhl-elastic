@@ -293,6 +293,7 @@ $cases = array(
 	'search articles: new reptiles Borneo' => function () { return run_search('articles', 'new reptiles Borneo', 0, 20); },
 	'search titles: Hampson Lepidoptera' => function () { return run_search('titles', 'Hampson Lepidoptera', 0, 20); },
 	'search titles: issn:0374-5481'     => function () { return run_search('titles', 'issn:0374-5481', 0, 20); },
+	'browse titles: 1890s, zoolog'      => function () { return run_search('titles', 'zoolog', 0, 48, 3, array('decade' => 1890)); },
 	'title 9243'                        => function () { return get_title(9243); },
 	'item 19398'                        => function () { return get_item(19398); },
 	'item 222763'                       => function () { return get_item(222763); },
