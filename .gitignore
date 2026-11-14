@@ -12,3 +12,4 @@ bhldata/*
 bhlocr/*
 !bhlocr/*.md
 *.checkpoint
+vendor/
