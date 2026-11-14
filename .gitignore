@@ -13,3 +13,7 @@ bhlocr/*
 !bhlocr/*.md
 *.checkpoint
 vendor/
+
+# Page sizes and word boxes from bhl-ocr-store (9 GB); keep only the docs
+bhl-ocr-store/*
+!bhl-ocr-store/*.md

@@ -33,6 +33,12 @@ $config['elastic_options'] = array(
 // BHL's open data bucket; thumbnails are web/<barcode>/<barcode>_<seq>_thumb.webp
 $config['bhl_images'] = 'https://bhl-open-data.s3.amazonaws.com';
 
+// Page sizes and word boxes---------------------------------------------------------------
+// From bhl-ocr-store (see bhl-ocr-store/bhl-light-words.md): every page's size in pixels,
+// which IIIF manifests need for their canvases, and the words on it. Read-only, opened
+// when first needed (see words_pdo() in iiif.php).
+$config['words_db'] = dirname(__FILE__) . '/bhl-ocr-store/bhl-light-words.db';
+
 // Database-------------------------------------------------------------------------------
 $config['bhldb']    = dirname(__FILE__) . '/bhl.db';
 

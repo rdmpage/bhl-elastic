@@ -32,6 +32,7 @@
 	var pages   = [];   // { canvas, label, thumbnail, image, service, el, img, ... }
 	var ranges  = [];   // { label, first, last } as page indexes
 	var current = -1;
+	var by_canvas = {};  // page index by canvas id
 
 	// How long a page must be in view before its full image is fetched (ms)
 	var DWELL = 150;
@@ -264,9 +265,19 @@
 		}
 	}
 
+	// The page asked for in the URL: #page=N (its position, from 1), or #canvas=id (the
+	// canvas's id, URL-encoded), which works whatever pages a manifest leaves out.
+	// -1 if neither, or no such page.
 	function hash_page() {
 		var m = window.location.hash.match(/page=(\d+)/);
-		return m ? parseInt(m[1], 10) - 1 : 0;
+		if (m) {
+			return parseInt(m[1], 10) - 1;
+		}
+		m = window.location.hash.match(/canvas=([^&]+)/);
+		if (m && by_canvas[decodeURIComponent(m[1])] !== undefined) {
+			return by_canvas[decodeURIComponent(m[1])];
+		}
+		return -1;
 	}
 
 	//------------------------------------------------------------------------------------
@@ -275,7 +286,6 @@
 		document.title = title || 'Viewer';
 		document.getElementById('viewer-title').textContent = title;
 
-		var by_canvas = {};
 		var fragment = document.createDocumentFragment();
 		var options = document.createDocumentFragment();
 
@@ -385,8 +395,8 @@
 		}
 
 		var start = hash_page();
-		if (start === 0 && manifest.start && by_canvas[manifest.start.id] !== undefined) {
-			start = by_canvas[manifest.start.id];
+		if (start < 0) {
+			start = manifest.start && by_canvas[manifest.start.id] !== undefined ? by_canvas[manifest.start.id] : 0;
 		}
 		go_to(start);
 		set_current(Math.max(0, Math.min(start, pages.length - 1)));
@@ -538,7 +548,7 @@
 
 	window.addEventListener('hashchange', function () {
 		var index = hash_page();
-		if (index !== current) {
+		if (index >= 0 && index !== current) {
 			go_to(index);
 		}
 	});
@@ -550,13 +560,8 @@
 		}
 		if (data.goto !== undefined) {
 			go_to(parseInt(data.goto, 10) - 1);
-		} else if (data.canvas !== undefined) {
-			for (var i = 0; i < pages.length; i++) {
-				if (pages[i].canvas === data.canvas) {
-					go_to(i);
-					break;
-				}
-			}
+		} else if (data.canvas !== undefined && by_canvas[data.canvas] !== undefined) {
+			go_to(by_canvas[data.canvas]);
 		}
 	});
 
