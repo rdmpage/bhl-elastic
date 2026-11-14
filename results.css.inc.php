@@ -280,6 +280,10 @@
 	/* same shape for every cover, so the names line up */
 	aspect-ratio: 2 / 3;
 	object-fit: contain;
+	/* no visible box: covers sit on a common baseline above their names */
+	object-position: center bottom;
+	border: none;
+	background-color: transparent;
 }
 
 .items-grid .page-name {
