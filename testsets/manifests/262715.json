@@ -1,0 +1,1867 @@
+{
+    "@context": [
+        "http://iiif.io/api/extension/text-granularity/context.json",
+        "http://iiif.io/api/presentation/3/context.json"
+    ],
+    "id": "http://localhost/ld4bhl/item/262715/manifest",
+    "type": "Manifest",
+    "label": {
+        "none": [
+            "no.236 (2016)"
+        ]
+    },
+    "items": [
+        {
+            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0001",
+            "type": "Canvas",
+            "annotations": [
+                {
+                    "id": "http://localhost/ld4bhl/annotations/page/57579637.json",
+                    "type": "AnnotationPage"
+                },
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0001/ocr",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0001/ocr/a1",
+                            "type": "Annotation",
+                            "textGranularity": "page",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/ocr/item-262715/item-262715-57579637-0001.txt",
+                                "type": "Text",
+                                "format": "text/plain"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0001",
+                            "motivation": "supplementing"
+                        }
+                    ]
+                }
+            ],
+            "thumbnail": [
+                {
+                    "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0001_thumb.webp",
+                    "type": "Image",
+                    "format": "image/webp",
+                    "height": 212,
+                    "width": 150
+                }
+            ],
+            "label": {
+                "none": [
+                    "p. 1"
+                ]
+            },
+            "height": 5262,
+            "width": 3720,
+            "items": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0001/ap1",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0001/ap1/a1",
+                            "type": "Annotation",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0001_large.webp",
+                                "type": "Image",
+                                "format": "image/webp"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0001",
+                            "motivation": "painting"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0002",
+            "type": "Canvas",
+            "annotations": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0002/ocr",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0002/ocr/a1",
+                            "type": "Annotation",
+                            "textGranularity": "page",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/ocr/item-262715/item-262715-57579636-0002.txt",
+                                "type": "Text",
+                                "format": "text/plain"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0002",
+                            "motivation": "supplementing"
+                        }
+                    ]
+                }
+            ],
+            "thumbnail": [
+                {
+                    "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0002_thumb.webp",
+                    "type": "Image",
+                    "format": "image/webp",
+                    "height": 212,
+                    "width": 150
+                }
+            ],
+            "label": {
+                "none": [
+                    "p. 2"
+                ]
+            },
+            "height": 5262,
+            "width": 3720,
+            "items": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0002/ap1",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0002/ap1/a1",
+                            "type": "Annotation",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0002_large.webp",
+                                "type": "Image",
+                                "format": "image/webp"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0002",
+                            "motivation": "painting"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0003",
+            "type": "Canvas",
+            "annotations": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0003/ocr",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0003/ocr/a1",
+                            "type": "Annotation",
+                            "textGranularity": "page",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/ocr/item-262715/item-262715-57579635-0003.txt",
+                                "type": "Text",
+                                "format": "text/plain"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0003",
+                            "motivation": "supplementing"
+                        }
+                    ]
+                }
+            ],
+            "thumbnail": [
+                {
+                    "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0003_thumb.webp",
+                    "type": "Image",
+                    "format": "image/webp",
+                    "height": 212,
+                    "width": 150
+                }
+            ],
+            "label": {
+                "none": [
+                    "p. 3"
+                ]
+            },
+            "height": 5262,
+            "width": 3720,
+            "items": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0003/ap1",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0003/ap1/a1",
+                            "type": "Annotation",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0003_large.webp",
+                                "type": "Image",
+                                "format": "image/webp"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0003",
+                            "motivation": "painting"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0004",
+            "type": "Canvas",
+            "annotations": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0004/ocr",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0004/ocr/a1",
+                            "type": "Annotation",
+                            "textGranularity": "page",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/ocr/item-262715/item-262715-57579634-0004.txt",
+                                "type": "Text",
+                                "format": "text/plain"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0004",
+                            "motivation": "supplementing"
+                        }
+                    ]
+                }
+            ],
+            "thumbnail": [
+                {
+                    "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0004_thumb.webp",
+                    "type": "Image",
+                    "format": "image/webp",
+                    "height": 212,
+                    "width": 150
+                }
+            ],
+            "label": {
+                "none": [
+                    "p. 4"
+                ]
+            },
+            "height": 5262,
+            "width": 3720,
+            "items": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0004/ap1",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0004/ap1/a1",
+                            "type": "Annotation",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0004_large.webp",
+                                "type": "Image",
+                                "format": "image/webp"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0004",
+                            "motivation": "painting"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0005",
+            "type": "Canvas",
+            "annotations": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0005/ocr",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0005/ocr/a1",
+                            "type": "Annotation",
+                            "textGranularity": "page",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/ocr/item-262715/item-262715-57579633-0005.txt",
+                                "type": "Text",
+                                "format": "text/plain"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0005",
+                            "motivation": "supplementing"
+                        }
+                    ]
+                }
+            ],
+            "thumbnail": [
+                {
+                    "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0005_thumb.webp",
+                    "type": "Image",
+                    "format": "image/webp",
+                    "height": 212,
+                    "width": 150
+                }
+            ],
+            "label": {
+                "none": [
+                    "p. 5"
+                ]
+            },
+            "height": 5262,
+            "width": 3720,
+            "items": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0005/ap1",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0005/ap1/a1",
+                            "type": "Annotation",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0005_large.webp",
+                                "type": "Image",
+                                "format": "image/webp"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0005",
+                            "motivation": "painting"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0006",
+            "type": "Canvas",
+            "annotations": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0006/ocr",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0006/ocr/a1",
+                            "type": "Annotation",
+                            "textGranularity": "page",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/ocr/item-262715/item-262715-57579632-0006.txt",
+                                "type": "Text",
+                                "format": "text/plain"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0006",
+                            "motivation": "supplementing"
+                        }
+                    ]
+                }
+            ],
+            "thumbnail": [
+                {
+                    "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0006_thumb.webp",
+                    "type": "Image",
+                    "format": "image/webp",
+                    "height": 212,
+                    "width": 150
+                }
+            ],
+            "label": {
+                "none": [
+                    "p. 6"
+                ]
+            },
+            "height": 5262,
+            "width": 3720,
+            "items": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0006/ap1",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0006/ap1/a1",
+                            "type": "Annotation",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0006_large.webp",
+                                "type": "Image",
+                                "format": "image/webp"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0006",
+                            "motivation": "painting"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0007",
+            "type": "Canvas",
+            "annotations": [
+                {
+                    "id": "http://localhost/ld4bhl/annotations/page/57579631.json",
+                    "type": "AnnotationPage"
+                },
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0007/ocr",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0007/ocr/a1",
+                            "type": "Annotation",
+                            "textGranularity": "page",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/ocr/item-262715/item-262715-57579631-0007.txt",
+                                "type": "Text",
+                                "format": "text/plain"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0007",
+                            "motivation": "supplementing"
+                        }
+                    ]
+                }
+            ],
+            "thumbnail": [
+                {
+                    "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0007_thumb.webp",
+                    "type": "Image",
+                    "format": "image/webp",
+                    "height": 212,
+                    "width": 150
+                }
+            ],
+            "label": {
+                "none": [
+                    "p. 7"
+                ]
+            },
+            "height": 5262,
+            "width": 3720,
+            "items": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0007/ap1",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0007/ap1/a1",
+                            "type": "Annotation",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0007_large.webp",
+                                "type": "Image",
+                                "format": "image/webp"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0007",
+                            "motivation": "painting"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0008",
+            "type": "Canvas",
+            "annotations": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0008/ocr",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0008/ocr/a1",
+                            "type": "Annotation",
+                            "textGranularity": "page",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/ocr/item-262715/item-262715-57579630-0008.txt",
+                                "type": "Text",
+                                "format": "text/plain"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0008",
+                            "motivation": "supplementing"
+                        }
+                    ]
+                }
+            ],
+            "thumbnail": [
+                {
+                    "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0008_thumb.webp",
+                    "type": "Image",
+                    "format": "image/webp",
+                    "height": 212,
+                    "width": 150
+                }
+            ],
+            "label": {
+                "none": [
+                    "p. 8"
+                ]
+            },
+            "height": 5262,
+            "width": 3720,
+            "items": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0008/ap1",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0008/ap1/a1",
+                            "type": "Annotation",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0008_large.webp",
+                                "type": "Image",
+                                "format": "image/webp"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0008",
+                            "motivation": "painting"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0009",
+            "type": "Canvas",
+            "annotations": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0009/ocr",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0009/ocr/a1",
+                            "type": "Annotation",
+                            "textGranularity": "page",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/ocr/item-262715/item-262715-57579629-0009.txt",
+                                "type": "Text",
+                                "format": "text/plain"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0009",
+                            "motivation": "supplementing"
+                        }
+                    ]
+                }
+            ],
+            "thumbnail": [
+                {
+                    "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0009_thumb.webp",
+                    "type": "Image",
+                    "format": "image/webp",
+                    "height": 212,
+                    "width": 150
+                }
+            ],
+            "label": {
+                "none": [
+                    "p. 9"
+                ]
+            },
+            "height": 5262,
+            "width": 3720,
+            "items": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0009/ap1",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0009/ap1/a1",
+                            "type": "Annotation",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0009_large.webp",
+                                "type": "Image",
+                                "format": "image/webp"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0009",
+                            "motivation": "painting"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0010",
+            "type": "Canvas",
+            "annotations": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0010/ocr",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0010/ocr/a1",
+                            "type": "Annotation",
+                            "textGranularity": "page",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/ocr/item-262715/item-262715-57579628-0010.txt",
+                                "type": "Text",
+                                "format": "text/plain"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0010",
+                            "motivation": "supplementing"
+                        }
+                    ]
+                }
+            ],
+            "thumbnail": [
+                {
+                    "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0010_thumb.webp",
+                    "type": "Image",
+                    "format": "image/webp",
+                    "height": 212,
+                    "width": 150
+                }
+            ],
+            "label": {
+                "none": [
+                    "p. 10"
+                ]
+            },
+            "height": 5262,
+            "width": 3720,
+            "items": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0010/ap1",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0010/ap1/a1",
+                            "type": "Annotation",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0010_large.webp",
+                                "type": "Image",
+                                "format": "image/webp"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0010",
+                            "motivation": "painting"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0011",
+            "type": "Canvas",
+            "annotations": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0011/ocr",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0011/ocr/a1",
+                            "type": "Annotation",
+                            "textGranularity": "page",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/ocr/item-262715/item-262715-57579627-0011.txt",
+                                "type": "Text",
+                                "format": "text/plain"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0011",
+                            "motivation": "supplementing"
+                        }
+                    ]
+                }
+            ],
+            "thumbnail": [
+                {
+                    "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0011_thumb.webp",
+                    "type": "Image",
+                    "format": "image/webp",
+                    "height": 212,
+                    "width": 150
+                }
+            ],
+            "label": {
+                "none": [
+                    "p. 11"
+                ]
+            },
+            "height": 5262,
+            "width": 3720,
+            "items": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0011/ap1",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0011/ap1/a1",
+                            "type": "Annotation",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0011_large.webp",
+                                "type": "Image",
+                                "format": "image/webp"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0011",
+                            "motivation": "painting"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0012",
+            "type": "Canvas",
+            "annotations": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0012/ocr",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0012/ocr/a1",
+                            "type": "Annotation",
+                            "textGranularity": "page",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/ocr/item-262715/item-262715-57579626-0012.txt",
+                                "type": "Text",
+                                "format": "text/plain"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0012",
+                            "motivation": "supplementing"
+                        }
+                    ]
+                }
+            ],
+            "thumbnail": [
+                {
+                    "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0012_thumb.webp",
+                    "type": "Image",
+                    "format": "image/webp",
+                    "height": 212,
+                    "width": 150
+                }
+            ],
+            "label": {
+                "none": [
+                    "p. 12"
+                ]
+            },
+            "height": 5262,
+            "width": 3720,
+            "items": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0012/ap1",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0012/ap1/a1",
+                            "type": "Annotation",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0012_large.webp",
+                                "type": "Image",
+                                "format": "image/webp"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0012",
+                            "motivation": "painting"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0013",
+            "type": "Canvas",
+            "annotations": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0013/ocr",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0013/ocr/a1",
+                            "type": "Annotation",
+                            "textGranularity": "page",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/ocr/item-262715/item-262715-57579625-0013.txt",
+                                "type": "Text",
+                                "format": "text/plain"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0013",
+                            "motivation": "supplementing"
+                        }
+                    ]
+                }
+            ],
+            "thumbnail": [
+                {
+                    "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0013_thumb.webp",
+                    "type": "Image",
+                    "format": "image/webp",
+                    "height": 212,
+                    "width": 150
+                }
+            ],
+            "label": {
+                "none": [
+                    "p. 13"
+                ]
+            },
+            "height": 5262,
+            "width": 3720,
+            "items": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0013/ap1",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0013/ap1/a1",
+                            "type": "Annotation",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0013_large.webp",
+                                "type": "Image",
+                                "format": "image/webp"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0013",
+                            "motivation": "painting"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0014",
+            "type": "Canvas",
+            "annotations": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0014/ocr",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0014/ocr/a1",
+                            "type": "Annotation",
+                            "textGranularity": "page",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/ocr/item-262715/item-262715-57579624-0014.txt",
+                                "type": "Text",
+                                "format": "text/plain"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0014",
+                            "motivation": "supplementing"
+                        }
+                    ]
+                }
+            ],
+            "thumbnail": [
+                {
+                    "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0014_thumb.webp",
+                    "type": "Image",
+                    "format": "image/webp",
+                    "height": 212,
+                    "width": 150
+                }
+            ],
+            "label": {
+                "none": [
+                    "p. 14"
+                ]
+            },
+            "height": 5262,
+            "width": 3720,
+            "items": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0014/ap1",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0014/ap1/a1",
+                            "type": "Annotation",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0014_large.webp",
+                                "type": "Image",
+                                "format": "image/webp"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0014",
+                            "motivation": "painting"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0015",
+            "type": "Canvas",
+            "annotations": [
+                {
+                    "id": "http://localhost/ld4bhl/annotations/page/57579623.json",
+                    "type": "AnnotationPage"
+                },
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0015/ocr",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0015/ocr/a1",
+                            "type": "Annotation",
+                            "textGranularity": "page",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/ocr/item-262715/item-262715-57579623-0015.txt",
+                                "type": "Text",
+                                "format": "text/plain"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0015",
+                            "motivation": "supplementing"
+                        }
+                    ]
+                }
+            ],
+            "thumbnail": [
+                {
+                    "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0015_thumb.webp",
+                    "type": "Image",
+                    "format": "image/webp",
+                    "height": 212,
+                    "width": 150
+                }
+            ],
+            "label": {
+                "none": [
+                    "p. 15"
+                ]
+            },
+            "height": 5262,
+            "width": 3720,
+            "items": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0015/ap1",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0015/ap1/a1",
+                            "type": "Annotation",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0015_large.webp",
+                                "type": "Image",
+                                "format": "image/webp"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0015",
+                            "motivation": "painting"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0016",
+            "type": "Canvas",
+            "annotations": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0016/ocr",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0016/ocr/a1",
+                            "type": "Annotation",
+                            "textGranularity": "page",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/ocr/item-262715/item-262715-57579622-0016.txt",
+                                "type": "Text",
+                                "format": "text/plain"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0016",
+                            "motivation": "supplementing"
+                        }
+                    ]
+                }
+            ],
+            "thumbnail": [
+                {
+                    "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0016_thumb.webp",
+                    "type": "Image",
+                    "format": "image/webp",
+                    "height": 212,
+                    "width": 150
+                }
+            ],
+            "label": {
+                "none": [
+                    "p. 16"
+                ]
+            },
+            "height": 5262,
+            "width": 3720,
+            "items": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0016/ap1",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0016/ap1/a1",
+                            "type": "Annotation",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0016_large.webp",
+                                "type": "Image",
+                                "format": "image/webp"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0016",
+                            "motivation": "painting"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0017",
+            "type": "Canvas",
+            "annotations": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0017/ocr",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0017/ocr/a1",
+                            "type": "Annotation",
+                            "textGranularity": "page",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/ocr/item-262715/item-262715-57579621-0017.txt",
+                                "type": "Text",
+                                "format": "text/plain"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0017",
+                            "motivation": "supplementing"
+                        }
+                    ]
+                }
+            ],
+            "thumbnail": [
+                {
+                    "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0017_thumb.webp",
+                    "type": "Image",
+                    "format": "image/webp",
+                    "height": 212,
+                    "width": 150
+                }
+            ],
+            "label": {
+                "none": [
+                    "p. 17"
+                ]
+            },
+            "height": 5262,
+            "width": 3720,
+            "items": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0017/ap1",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0017/ap1/a1",
+                            "type": "Annotation",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0017_large.webp",
+                                "type": "Image",
+                                "format": "image/webp"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0017",
+                            "motivation": "painting"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0018",
+            "type": "Canvas",
+            "annotations": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0018/ocr",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0018/ocr/a1",
+                            "type": "Annotation",
+                            "textGranularity": "page",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/ocr/item-262715/item-262715-57579620-0018.txt",
+                                "type": "Text",
+                                "format": "text/plain"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0018",
+                            "motivation": "supplementing"
+                        }
+                    ]
+                }
+            ],
+            "thumbnail": [
+                {
+                    "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0018_thumb.webp",
+                    "type": "Image",
+                    "format": "image/webp",
+                    "height": 212,
+                    "width": 150
+                }
+            ],
+            "label": {
+                "none": [
+                    "p. 18"
+                ]
+            },
+            "height": 5262,
+            "width": 3720,
+            "items": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0018/ap1",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0018/ap1/a1",
+                            "type": "Annotation",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0018_large.webp",
+                                "type": "Image",
+                                "format": "image/webp"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0018",
+                            "motivation": "painting"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0019",
+            "type": "Canvas",
+            "annotations": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0019/ocr",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0019/ocr/a1",
+                            "type": "Annotation",
+                            "textGranularity": "page",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/ocr/item-262715/item-262715-57579619-0019.txt",
+                                "type": "Text",
+                                "format": "text/plain"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0019",
+                            "motivation": "supplementing"
+                        }
+                    ]
+                }
+            ],
+            "thumbnail": [
+                {
+                    "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0019_thumb.webp",
+                    "type": "Image",
+                    "format": "image/webp",
+                    "height": 212,
+                    "width": 150
+                }
+            ],
+            "label": {
+                "none": [
+                    "p. 19"
+                ]
+            },
+            "height": 5262,
+            "width": 3720,
+            "items": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0019/ap1",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0019/ap1/a1",
+                            "type": "Annotation",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0019_large.webp",
+                                "type": "Image",
+                                "format": "image/webp"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0019",
+                            "motivation": "painting"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0020",
+            "type": "Canvas",
+            "annotations": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0020/ocr",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0020/ocr/a1",
+                            "type": "Annotation",
+                            "textGranularity": "page",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/ocr/item-262715/item-262715-57579618-0020.txt",
+                                "type": "Text",
+                                "format": "text/plain"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0020",
+                            "motivation": "supplementing"
+                        }
+                    ]
+                }
+            ],
+            "thumbnail": [
+                {
+                    "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0020_thumb.webp",
+                    "type": "Image",
+                    "format": "image/webp",
+                    "height": 212,
+                    "width": 150
+                }
+            ],
+            "label": {
+                "none": [
+                    "p. 20"
+                ]
+            },
+            "height": 5262,
+            "width": 3720,
+            "items": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0020/ap1",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0020/ap1/a1",
+                            "type": "Annotation",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0020_large.webp",
+                                "type": "Image",
+                                "format": "image/webp"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0020",
+                            "motivation": "painting"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0021",
+            "type": "Canvas",
+            "annotations": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0021/ocr",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0021/ocr/a1",
+                            "type": "Annotation",
+                            "textGranularity": "page",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/ocr/item-262715/item-262715-57579617-0021.txt",
+                                "type": "Text",
+                                "format": "text/plain"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0021",
+                            "motivation": "supplementing"
+                        }
+                    ]
+                }
+            ],
+            "thumbnail": [
+                {
+                    "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0021_thumb.webp",
+                    "type": "Image",
+                    "format": "image/webp",
+                    "height": 212,
+                    "width": 150
+                }
+            ],
+            "label": {
+                "none": [
+                    "p. 21"
+                ]
+            },
+            "height": 5262,
+            "width": 3720,
+            "items": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0021/ap1",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0021/ap1/a1",
+                            "type": "Annotation",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0021_large.webp",
+                                "type": "Image",
+                                "format": "image/webp"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0021",
+                            "motivation": "painting"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0022",
+            "type": "Canvas",
+            "annotations": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0022/ocr",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0022/ocr/a1",
+                            "type": "Annotation",
+                            "textGranularity": "page",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/ocr/item-262715/item-262715-57579616-0022.txt",
+                                "type": "Text",
+                                "format": "text/plain"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0022",
+                            "motivation": "supplementing"
+                        }
+                    ]
+                }
+            ],
+            "thumbnail": [
+                {
+                    "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0022_thumb.webp",
+                    "type": "Image",
+                    "format": "image/webp",
+                    "height": 212,
+                    "width": 150
+                }
+            ],
+            "label": {
+                "none": [
+                    "p. 22"
+                ]
+            },
+            "height": 5262,
+            "width": 3720,
+            "items": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0022/ap1",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0022/ap1/a1",
+                            "type": "Annotation",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0022_large.webp",
+                                "type": "Image",
+                                "format": "image/webp"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0022",
+                            "motivation": "painting"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0023",
+            "type": "Canvas",
+            "annotations": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0023/ocr",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0023/ocr/a1",
+                            "type": "Annotation",
+                            "textGranularity": "page",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/ocr/item-262715/item-262715-57579615-0023.txt",
+                                "type": "Text",
+                                "format": "text/plain"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0023",
+                            "motivation": "supplementing"
+                        }
+                    ]
+                }
+            ],
+            "thumbnail": [
+                {
+                    "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0023_thumb.webp",
+                    "type": "Image",
+                    "format": "image/webp",
+                    "height": 212,
+                    "width": 150
+                }
+            ],
+            "label": {
+                "none": [
+                    "p. 23"
+                ]
+            },
+            "height": 5262,
+            "width": 3720,
+            "items": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0023/ap1",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0023/ap1/a1",
+                            "type": "Annotation",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0023_large.webp",
+                                "type": "Image",
+                                "format": "image/webp"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0023",
+                            "motivation": "painting"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0024",
+            "type": "Canvas",
+            "annotations": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0024/ocr",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0024/ocr/a1",
+                            "type": "Annotation",
+                            "textGranularity": "page",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/ocr/item-262715/item-262715-57579614-0024.txt",
+                                "type": "Text",
+                                "format": "text/plain"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0024",
+                            "motivation": "supplementing"
+                        }
+                    ]
+                }
+            ],
+            "thumbnail": [
+                {
+                    "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0024_thumb.webp",
+                    "type": "Image",
+                    "format": "image/webp",
+                    "height": 212,
+                    "width": 150
+                }
+            ],
+            "label": {
+                "none": [
+                    "p. 24"
+                ]
+            },
+            "height": 5262,
+            "width": 3720,
+            "items": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0024/ap1",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0024/ap1/a1",
+                            "type": "Annotation",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0024_large.webp",
+                                "type": "Image",
+                                "format": "image/webp"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0024",
+                            "motivation": "painting"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0025",
+            "type": "Canvas",
+            "annotations": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0025/ocr",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0025/ocr/a1",
+                            "type": "Annotation",
+                            "textGranularity": "page",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/ocr/item-262715/item-262715-57579613-0025.txt",
+                                "type": "Text",
+                                "format": "text/plain"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0025",
+                            "motivation": "supplementing"
+                        }
+                    ]
+                }
+            ],
+            "thumbnail": [
+                {
+                    "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0025_thumb.webp",
+                    "type": "Image",
+                    "format": "image/webp",
+                    "height": 212,
+                    "width": 150
+                }
+            ],
+            "label": {
+                "none": [
+                    "p. 25"
+                ]
+            },
+            "height": 5262,
+            "width": 3720,
+            "items": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0025/ap1",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0025/ap1/a1",
+                            "type": "Annotation",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0025_large.webp",
+                                "type": "Image",
+                                "format": "image/webp"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0025",
+                            "motivation": "painting"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0026",
+            "type": "Canvas",
+            "annotations": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0026/ocr",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0026/ocr/a1",
+                            "type": "Annotation",
+                            "textGranularity": "page",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/ocr/item-262715/item-262715-57579612-0026.txt",
+                                "type": "Text",
+                                "format": "text/plain"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0026",
+                            "motivation": "supplementing"
+                        }
+                    ]
+                }
+            ],
+            "thumbnail": [
+                {
+                    "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0026_thumb.webp",
+                    "type": "Image",
+                    "format": "image/webp",
+                    "height": 212,
+                    "width": 150
+                }
+            ],
+            "label": {
+                "none": [
+                    "p. 26"
+                ]
+            },
+            "height": 5262,
+            "width": 3720,
+            "items": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0026/ap1",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0026/ap1/a1",
+                            "type": "Annotation",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0026_large.webp",
+                                "type": "Image",
+                                "format": "image/webp"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0026",
+                            "motivation": "painting"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0027",
+            "type": "Canvas",
+            "annotations": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0027/ocr",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0027/ocr/a1",
+                            "type": "Annotation",
+                            "textGranularity": "page",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/ocr/item-262715/item-262715-57579611-0027.txt",
+                                "type": "Text",
+                                "format": "text/plain"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0027",
+                            "motivation": "supplementing"
+                        }
+                    ]
+                }
+            ],
+            "thumbnail": [
+                {
+                    "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0027_thumb.webp",
+                    "type": "Image",
+                    "format": "image/webp",
+                    "height": 212,
+                    "width": 150
+                }
+            ],
+            "label": {
+                "none": [
+                    "p. 27"
+                ]
+            },
+            "height": 5262,
+            "width": 3720,
+            "items": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0027/ap1",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0027/ap1/a1",
+                            "type": "Annotation",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0027_large.webp",
+                                "type": "Image",
+                                "format": "image/webp"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0027",
+                            "motivation": "painting"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0028",
+            "type": "Canvas",
+            "annotations": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0028/ocr",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0028/ocr/a1",
+                            "type": "Annotation",
+                            "textGranularity": "page",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/ocr/item-262715/item-262715-57579610-0028.txt",
+                                "type": "Text",
+                                "format": "text/plain"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0028",
+                            "motivation": "supplementing"
+                        }
+                    ]
+                }
+            ],
+            "thumbnail": [
+                {
+                    "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0028_thumb.webp",
+                    "type": "Image",
+                    "format": "image/webp",
+                    "height": 212,
+                    "width": 150
+                }
+            ],
+            "label": {
+                "none": [
+                    "p. 28"
+                ]
+            },
+            "height": 5262,
+            "width": 3720,
+            "items": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0028/ap1",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0028/ap1/a1",
+                            "type": "Annotation",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0028_large.webp",
+                                "type": "Image",
+                                "format": "image/webp"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0028",
+                            "motivation": "painting"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0029",
+            "type": "Canvas",
+            "annotations": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0029/ocr",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0029/ocr/a1",
+                            "type": "Annotation",
+                            "textGranularity": "page",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/ocr/item-262715/item-262715-57579609-0029.txt",
+                                "type": "Text",
+                                "format": "text/plain"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0029",
+                            "motivation": "supplementing"
+                        }
+                    ]
+                }
+            ],
+            "thumbnail": [
+                {
+                    "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0029_thumb.webp",
+                    "type": "Image",
+                    "format": "image/webp",
+                    "height": 212,
+                    "width": 150
+                }
+            ],
+            "label": {
+                "none": [
+                    "p. 29"
+                ]
+            },
+            "height": 5262,
+            "width": 3720,
+            "items": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0029/ap1",
+                    "type": "AnnotationPage",
+                    "items": [
+                        {
+                            "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0029/ap1/a1",
+                            "type": "Annotation",
+                            "body": {
+                                "id": "https://bhl-open-data.s3.us-east-2.amazonaws.com/web/europeanjournal236muse/europeanjournal236muse_0029_large.webp",
+                                "type": "Image",
+                                "format": "image/webp"
+                            },
+                            "target": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0029",
+                            "motivation": "painting"
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "structures": [
+        {
+            "id": "http://localhost/ld4bhl/item/262715/manifest/range/10000",
+            "type": "Range",
+            "label": {
+                "none": [
+                    "New narrow-range endemic land snails from the sky islands of northern South Africa (Gastropoda: Streptaxidae and Urocyclidae)"
+                ]
+            },
+            "items": [
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0001",
+                    "type": "Canvas"
+                },
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0002",
+                    "type": "Canvas"
+                },
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0003",
+                    "type": "Canvas"
+                },
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0004",
+                    "type": "Canvas"
+                },
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0005",
+                    "type": "Canvas"
+                },
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0006",
+                    "type": "Canvas"
+                },
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0007",
+                    "type": "Canvas"
+                },
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0008",
+                    "type": "Canvas"
+                },
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0009",
+                    "type": "Canvas"
+                },
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0010",
+                    "type": "Canvas"
+                },
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0011",
+                    "type": "Canvas"
+                },
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0012",
+                    "type": "Canvas"
+                },
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0013",
+                    "type": "Canvas"
+                },
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0014",
+                    "type": "Canvas"
+                },
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0015",
+                    "type": "Canvas"
+                },
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0016",
+                    "type": "Canvas"
+                },
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0017",
+                    "type": "Canvas"
+                },
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0018",
+                    "type": "Canvas"
+                },
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0019",
+                    "type": "Canvas"
+                },
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0020",
+                    "type": "Canvas"
+                },
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0021",
+                    "type": "Canvas"
+                },
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0022",
+                    "type": "Canvas"
+                },
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0023",
+                    "type": "Canvas"
+                },
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0024",
+                    "type": "Canvas"
+                },
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0025",
+                    "type": "Canvas"
+                },
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0026",
+                    "type": "Canvas"
+                },
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0027",
+                    "type": "Canvas"
+                },
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0028",
+                    "type": "Canvas"
+                },
+                {
+                    "id": "http://localhost/ld4bhl/europeanjournal236muse/canvas/p0029",
+                    "type": "Canvas"
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Viewer</title>
+<!--
+	A scrolling page viewer for a IIIF Presentation 3 manifest.
+
+	viewer.html?manifest=testsets/manifests/61794.json#page=13
+
+	#page= is the page's position in the item (1, 2, ...), as in PDF URLs (RFC 3778).
+	The button at the left of the bar shows thumbnails of all pages, to move around fast.
+	In an iframe, the viewer tells its parent which page is showing, and the parent can
+	ask it to go to a page (see viewer.js).
+-->
+<link rel="stylesheet" href="viewer.css">
+</head>
+<body>
+<header class="viewer-bar">
+	<button type="button" id="viewer-thumbs-toggle" class="viewer-thumbs-toggle" aria-controls="viewer-thumbs" aria-expanded="false" title="Thumbnails">
+		<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+	</button>
+	<span class="viewer-title" id="viewer-title"></span>
+	<select id="viewer-articles" class="viewer-articles" hidden aria-label="Article"></select>
+	<select id="viewer-pages" class="viewer-pages" aria-label="Page"></select>
+</header>
+<div class="viewer-body">
+	<nav id="viewer-thumbs" class="viewer-thumbs" hidden aria-label="Thumbnails"></nav>
+	<main id="viewer-pages-list" class="viewer-scroll"></main>
+</div>
+<script src="viewer.js"></script>
+</body>
+</html>
