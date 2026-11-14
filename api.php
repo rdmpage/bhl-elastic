@@ -6,10 +6,12 @@
 //   api.php?q=new+species+Borneo&from=20
 //   api.php?q=Rhacophorus&pages=10     (matching pages listed per result, up to 100)
 //   api.php?q=Dillon+1984+Flourensia&type=articles   (search article metadata)
+//   api.php?title=9243                  (a title and its items)
 
 error_reporting(E_ALL);
 
 require_once (dirname(__FILE__) . '/search.php');
+require_once (dirname(__FILE__) . '/records.php');
 
 //----------------------------------------------------------------------------------------
 function send_json($status, $obj)
@@ -27,6 +29,20 @@ function main()
 	$from  = isset($_GET['from']) ? max(0, (int)$_GET['from']) : 0;
 	$pages = isset($_GET['pages']) ? (int)$_GET['pages'] : 3;
 	$type  = isset($_GET['type']) && isset(search_types()[$_GET['type']]) ? $_GET['type'] : 'all';
+
+	if (isset($_GET['title']))
+	{
+		try
+		{
+			$title = get_title((int)$_GET['title']);
+			$title ? send_json(200, $title) : send_json(404, array('error' => 'No such title'));
+		}
+		catch (Exception $e)
+		{
+			send_json(502, array('error' => $e->getMessage()));
+		}
+		return;
+	}
 
 	if ($q == '')
 	{

@@ -91,6 +91,12 @@ function item_doc($stmts, $pdo, $itemid, $title_names)
 	set_field($doc, 'year',      first_year($item['Year']));
 	set_field($doc, 'thumbnail', item_thumbnail($pdo, $itemid));
 
+	// the contributing library, and rights
+	set_field($doc, 'institutions',  $item['InstitutionName'] != '' ? array($item['InstitutionName']) : null);
+	set_field($doc, 'copyright',     copyright_status($item['CopyrightStatus']));
+	set_field($doc, 'license',       normalise_license($item['LicenseType']));
+	set_field($doc, 'rights_holder', $item['RightsHolder']);
+
 	return array($doc, $titleids);
 }
 
@@ -161,6 +167,11 @@ function part_docs($stmts, $pdo, $itemid, $titleids, $title_names)
 
 //----------------------------------------------------------------------------------------
 // Title document. Its thumbnail is that of its first item (lowest ItemID) that has one.
+//
+// tags holds the kind of title, Periodical (a serial in the catalogue record) or Book
+// (anything else). Years run from the first item to the last, as the title's own
+// StartYear and EndYear are often missing. institutions are the libraries that
+// contributed its items, and copyright and license are gathered from its items too.
 function title_doc($stmts, $pdo, $titleid)
 {
 	$stmts['title']->execute(array($titleid));
@@ -182,13 +193,51 @@ function title_doc($stmts, $pdo, $titleid)
 	set_field($doc, 'name',     $title['ShortTitle'] != '' ? $title['ShortTitle'] : $title['FullTitle']);
 	set_field($doc, 'fullname', $title['FullTitle'] != $doc->name ? $title['FullTitle'] : null);
 	set_field($doc, 'authors',  array_values(array_unique($authors)));
-	set_field($doc, 'year',     first_year($title['StartYear']));
+	set_field($doc, 'tags',     array(substr($title['MARCLeader'], 7, 1) == 's' ? 'Periodical' : 'Book'));
+	set_field($doc, 'language', language_code($title['LanguageCode']));
 	set_field($doc, 'doi',      entity_doi($stmts, 'Title', $titleid));
 
-	$stmts['title_items']->execute(array($titleid));
-	foreach ($stmts['title_items']->fetchAll(PDO::FETCH_COLUMN) as $itemid)
+	$stmts['subject']->execute(array($titleid));
+	set_field($doc, 'subjects', array_values(array_unique($stmts['subject']->fetchAll(PDO::FETCH_COLUMN))));
+
+	$names = title_identifier_names();
+	$identifiers = array();
+	$stmts['titleidentifier']->execute(array($titleid));
+	foreach ($stmts['titleidentifier']->fetchAll(PDO::FETCH_ASSOC) as $row)
 	{
-		$thumbnail = item_thumbnail($pdo, $itemid);
+		if (isset($names[$row['IdentifierName']]) && trim($row['IdentifierValue']) != '')
+		{
+			$identifiers[] = $names[$row['IdentifierName']] . ':' . trim($row['IdentifierValue']);
+		}
+	}
+	set_field($doc, 'identifiers', array_values(array_unique($identifiers)));
+
+	$stmts['title_items']->execute(array($titleid));
+	$items = $stmts['title_items']->fetchAll(PDO::FETCH_ASSOC);
+
+	$years = array();
+	$institutions = array();
+	$copyright = array();
+	$license = array();
+	foreach ($items as $item)
+	{
+		$years[] = first_year($item['Year']);
+		$years[] = last_year($item['Year']);
+		$institutions[] = $item['InstitutionName'];
+		$copyright[] = copyright_status($item['CopyrightStatus']);
+		$license[] = normalise_license($item['LicenseType']);
+	}
+	$years = array_filter($years);
+
+	set_field($doc, 'year',         count($years) > 0 ? min($years) : first_year($title['StartYear']));
+	set_field($doc, 'end_year',     count($years) > 0 ? max($years) : last_year($title['EndYear']));
+	set_field($doc, 'institutions', array_values(array_unique(array_filter($institutions))));
+	set_field($doc, 'copyright',    array_values(array_unique($copyright)));
+	set_field($doc, 'license',      array_values(array_unique(array_filter($license))));
+
+	foreach ($items as $item)
+	{
+		$thumbnail = item_thumbnail($pdo, $item['ItemID']);
 		if ($thumbnail)
 		{
 			$doc->thumbnail = $thumbnail;
@@ -230,12 +279,14 @@ if (!$ndjson)
 $pdo = $config['bhlpdo'];
 
 $stmts = array(
-	'item'        => $pdo->prepare('SELECT TitleID, VolumeInfo, Year FROM item WHERE ItemID = ?'),
+	'item'        => $pdo->prepare('SELECT TitleID, VolumeInfo, Year, InstitutionName, CopyrightStatus, LicenseType, RightsHolder FROM item WHERE ItemID = ?'),
 	'part'        => $pdo->prepare('SELECT PartID, MAX(SequenceOrder) AS SequenceOrder, MAX(Title) AS Title, MAX(ContainerTitle) AS ContainerTitle, MAX(SegmentType) AS SegmentType, MAX(Date) AS Date, MAX(Volume) AS Volume, MAX(Issue) AS Issue, MAX(PageRange) AS PageRange, MAX(StartPageID) AS StartPageID FROM part WHERE ItemID = ? GROUP BY PartID'),
 	'partcreator' => $pdo->prepare('SELECT CreatorName FROM partcreator WHERE PartID = ? ORDER BY rowid'),
-	'title'       => $pdo->prepare('SELECT ShortTitle, FullTitle, StartYear FROM title WHERE TitleID = ? LIMIT 1'),
+	'title'       => $pdo->prepare('SELECT ShortTitle, FullTitle, StartYear, EndYear, MARCLeader, LanguageCode FROM title WHERE TitleID = ? LIMIT 1'),
 	'title_names' => $pdo->prepare('SELECT ShortTitle, FullTitle FROM title WHERE TitleID = ? LIMIT 1'),
-	'title_items' => $pdo->prepare('SELECT DISTINCT ItemID FROM item WHERE TitleID = ? ORDER BY ItemID'),
+	'title_items' => $pdo->prepare('SELECT ItemID, Year, InstitutionName, CopyrightStatus, LicenseType FROM item WHERE TitleID = ? GROUP BY ItemID ORDER BY ItemID'),
+	'subject'     => $pdo->prepare('SELECT Subject FROM subject WHERE TitleID = ? ORDER BY rowid'),
+	'titleidentifier' => $pdo->prepare('SELECT IdentifierName, IdentifierValue FROM titleidentifier WHERE TitleID = ? ORDER BY rowid'),
 	// Main entries before added ones, then catalogue order
 	'creator'     => $pdo->prepare("SELECT CreatorName FROM creator WHERE TitleID = ? ORDER BY CreatorType NOT LIKE 'Main%', rowid"),
 	'doi'         => $pdo->prepare('SELECT DOI FROM doi WHERE EntityType = ? AND EntityID = ? LIMIT 1'),

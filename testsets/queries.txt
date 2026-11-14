@@ -21,3 +21,7 @@ articles: Dillon 1984 A systematic study of Flourensia Fieldiana Botany 16: 1-66
 articles: Blake 1935 New Asteraceae from the United States, Mexico, and South America. J. Wash. Acad. Sci. 25: 311-325
 # Author and subject words: Boulenger's Bornean papers
 articles: Boulenger batrachians Borneo
+# Author and subject across fields: Hampson's catalogue of moths
+titles: Hampson Lepidoptera
+# Title by ISSN: the Annals and Magazine of Natural History
+titles: issn:0374-5481

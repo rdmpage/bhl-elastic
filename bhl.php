@@ -44,6 +44,166 @@ function first_year($value)
 }
 
 //----------------------------------------------------------------------------------------
+// Last year in a string such as "1898-1901", or null.
+function last_year($value)
+{
+	if ($value !== null && preg_match_all('/(1[5-9]\d\d|20\d\d)/', $value, $m))
+	{
+		return (int)max($m[1]);
+	}
+	return null;
+}
+
+//----------------------------------------------------------------------------------------
+// BHL's language codes (MARC, e.g. "ENG") as two-letter codes (BCP 47, as schema.org's
+// inLanguage expects), with names to display. Codes not listed are kept in lower case;
+// "und" (undetermined) and "mul" (multiple) are left out.
+function bhl_languages()
+{
+	return array(
+		'ENG' => array('en', 'English'),
+		'FRE' => array('fr', 'French'),
+		'GER' => array('de', 'German'),
+		'LAT' => array('la', 'Latin'),
+		'CHI' => array('zh', 'Chinese'),
+		'SPA' => array('es', 'Spanish'),
+		'ITA' => array('it', 'Italian'),
+		'DUT' => array('nl', 'Dutch'),
+		'POR' => array('pt', 'Portuguese'),
+		'SWE' => array('sv', 'Swedish'),
+		'JPN' => array('ja', 'Japanese'),
+		'RUS' => array('ru', 'Russian'),
+		'DAN' => array('da', 'Danish'),
+		'HUN' => array('hu', 'Hungarian'),
+		'NOR' => array('no', 'Norwegian'),
+		'CZE' => array('cs', 'Czech'),
+		'ARA' => array('ar', 'Arabic'),
+		'POL' => array('pl', 'Polish'),
+		'RUM' => array('ro', 'Romanian'),
+		'CAT' => array('ca', 'Catalan'),
+		'UKR' => array('uk', 'Ukrainian'),
+	);
+}
+
+//----------------------------------------------------------------------------------------
+function language_code($marc)
+{
+	$marc = strtoupper(trim((string)$marc));
+	$languages = bhl_languages();
+
+	if (isset($languages[$marc]))
+	{
+		return $languages[$marc][0];
+	}
+	if ($marc == '' || $marc == 'UND' || $marc == 'MUL')
+	{
+		return null;
+	}
+	return strtolower($marc);
+}
+
+//----------------------------------------------------------------------------------------
+function language_name($code)
+{
+	foreach (bhl_languages() as $language)
+	{
+		if ($language[0] == $code)
+		{
+			return $language[1];
+		}
+	}
+	return $code;
+}
+
+//----------------------------------------------------------------------------------------
+// An item's copyright status (item.CopyrightStatus, nearly 300 different wordings) as
+// one of a few categories. "Not in copyright" is tested before "in copyright".
+function copyright_status($status)
+{
+	$status = trim((string)$status);
+
+	if ($status == '' || preg_match('/^not provided/i', $status))
+	{
+		return 'Not provided';
+	}
+	if (preg_match('/no known copyright|unaware of any|knows of no copyright/i', $status))
+	{
+		return 'No known copyright restrictions';
+	}
+	if (preg_match('/not[ _-]*in[ _-]*copyright|^NIC$|public[ _-]*domain|not claimed or not renewed/i', $status))
+	{
+		return 'Public domain';
+	}
+	if (preg_match('/in[ _-]*copyright|permission|copyright|&copy;|©/i', $status))
+	{
+		return 'In copyright';
+	}
+	return 'Other';
+}
+
+//----------------------------------------------------------------------------------------
+// An item's licence (item.LicenseType) as a Creative Commons URL in one form,
+// e.g. "https://creativecommons.org/licenses/by-nc-sa/4.0/", or null if it is not one.
+function normalise_license($license)
+{
+	$license = strtolower(trim(preg_replace('/[^\x21-\x7e]/', '', (string)$license)));
+
+	if (preg_match('/creativecommons.org\/share-your-work\/public-domain\/cc0/', $license))
+	{
+		return 'https://creativecommons.org/publicdomain/zero/1.0/';
+	}
+	if (preg_match('/creativecommons.org\/(licenses|publicdomain)\/([a-z-]+)\/(\d\.\d)/', $license, $m))
+	{
+		return 'https://creativecommons.org/' . $m[1] . '/' . $m[2] . '/' . $m[3] . '/';
+	}
+	return null;
+}
+
+//----------------------------------------------------------------------------------------
+// "CC BY-NC-SA 4.0" for a Creative Commons URL.
+function license_label($url)
+{
+	if (preg_match('/\/licenses\/([a-z-]+)\/(\d\.\d)\//', $url, $m))
+	{
+		return 'CC ' . strtoupper($m[1]) . ' ' . $m[2];
+	}
+	if (preg_match('/\/publicdomain\/zero\//', $url))
+	{
+		return 'CC0';
+	}
+	if (preg_match('/\/publicdomain\/mark\//', $url))
+	{
+		return 'Public Domain Mark';
+	}
+	return $url;
+}
+
+//----------------------------------------------------------------------------------------
+// The title identifiers worth keeping, from BHL's name to ours (lower case, used as a
+// prefix, e.g. "oclc:1110975"). BHL's internal ones (MARC001, WonderFetch, OAI) are left
+// out, as is Abbreviation, which is a name rather than an identifier.
+function title_identifier_names()
+{
+	return array(
+		'OCLC'         => 'oclc',
+		'Wikidata'     => 'wikidata',
+		'ISSN'         => 'issn',
+		'eISSN'        => 'eissn',
+		'Linking ISSN' => 'issn-l',
+		'ISBN'         => 'isbn',
+		'DLC'          => 'dlc',
+		'NAL'          => 'nal',
+		'NLM'          => 'nlm',
+		'DDC'          => 'ddc',
+		'GPO'          => 'gpo',
+		'CODEN'        => 'coden',
+		'TL2'          => 'tl2',
+		'Soulsby'      => 'soulsby',
+		'BPH'          => 'bph',
+	);
+}
+
+//----------------------------------------------------------------------------------------
 // Thumbnail URL for page $pageid of item $itemid, or null if bhl.db does not have that
 // page in that item.
 //
