@@ -23,9 +23,10 @@
 //
 // If the manifest has a search service (IIIF Content Search 2.0, SearchService2), a
 // panel at the right searches inside it and lists the hits by page, each in its
-// context (the TextQuoteSelector of its contextualizing annotation); choosing one goes
-// to its page. ?q= in the viewer's URL runs a search when it opens, and is kept up to
-// date, so a search can be linked to.
+// context (the TextQuoteSelector of its contextualizing annotation). Hits whose target
+// is a box (#xywh=), or several, are marked on their pages; choosing a hit goes to it.
+// ?q= in the viewer's URL runs a search when it opens, and is kept up to date, so a
+// search can be linked to; the first hit on the page asked for is then shown.
 //
 // In an iframe the viewer sends its parent { type: 'page', page, label, canvas } when
 // the page showing changes (page counts from 1), and goes to a page when sent
@@ -585,11 +586,12 @@
 			var q = (params.get('q') || '').trim();
 			if (q) {
 				search_input.value = q;
-				run_search(q);
 				// On a phone the panel would cover the page asked for
 				if (!narrow.matches) {
 					show_search(true);
 				}
+				var asked = hash_page();
+				run_search(q, asked >= 0 ? asked : undefined);
 			}
 		}
 
@@ -718,8 +720,71 @@
 		return typeof target === 'string' ? target.replace(/#.*$/, '') : null;
 	}
 
-	// Search, and list the hits as they come in, page by page
-	function run_search(q) {
+	// Mark a page's hits on it, in a layer under its text
+	function draw_hits(page) {
+		if (!page.width || !page.height) {
+			return;
+		}
+		if (!page.hits_el) {
+			page.hits_el = document.createElement('div');
+			page.hits_el.className = 'viewer-hits';
+			page.el.insertBefore(page.hits_el, page.img.nextSibling);
+		}
+		page.hits.forEach(function (hit) {
+			if (hit.els) {
+				return;
+			}
+			hit.els = hit.boxes.map(function (box) {
+				var div = document.createElement('div');
+				div.style.left = (box[0] / page.width * 100) + '%';
+				div.style.top = (box[1] / page.height * 100) + '%';
+				div.style.width = (box[2] / page.width * 100) + '%';
+				div.style.height = (box[3] / page.height * 100) + '%';
+				page.hits_el.appendChild(div);
+				return div;
+			});
+		});
+	}
+
+	function clear_hits() {
+		pages.forEach(function (page) {
+			if (page.hits_el) {
+				page.hits_el.remove();
+				page.hits_el = null;
+			}
+			page.hits = null;
+		});
+	}
+
+	// Show a hit: mark it and its entry in the list as current, and scroll its first
+	// box to a third of the way down the screen (or its page to the top)
+	function go_to_hit(hit) {
+		var old = scroller.querySelectorAll('.viewer-hits .current');
+		for (var i = 0; i < old.length; i++) {
+			old[i].classList.remove('current');
+		}
+		old = search_results.querySelector('.current');
+		if (old) {
+			old.classList.remove('current');
+		}
+		hit.button.classList.add('current');
+		hit.button.scrollIntoView({ block: 'nearest' });
+
+		var page = pages[hit.index];
+		if (!hit.els || hit.els.length === 0) {
+			go_to(hit.index);
+			return;
+		}
+		hit.els.forEach(function (el) {
+			el.classList.add('current');
+		});
+		var top = page.el.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop;
+		scroller.scrollTop = top + page.el.clientHeight * hit.boxes[0][1] / page.height - scroller.clientHeight / 3;
+	}
+
+	// Search, and list the hits as they come in, page by page. If focus is a page
+	// index, its first hit is shown when it arrives.
+	function run_search(q, focus) {
 		var run = ++search_run;
 		var hits = 0;
 		var hit_pages = 0;
@@ -728,6 +793,7 @@
 		var responses = 0;
 
 		search_results.innerHTML = '';
+		clear_hits();
 
 		// Keep the search in the URL
 		if (q) {
@@ -798,10 +864,23 @@
 							hit_pages++;
 						}
 
+						var page = pages[index];
+						var hit = {
+							index: index,
+							boxes: as_array(annotation.target).map(target_box).filter(function (box) {
+								return box && box[2] > 0 && box[3] > 0;
+							})
+						};
+						if (!page.hits) {
+							page.hits = [];
+						}
+						page.hits.push(hit);
+
 						var button = document.createElement('button');
 						button.type = 'button';
 						button.className = 'viewer-search-hit';
-						button.dataset.index = index;
+						button.hit = hit;
+						hit.button = button;
 						var quote = quotes[annotation.id];
 						if (quote) {
 							button.appendChild(document.createTextNode((quote.prefix ? '…' + quote.prefix : '')));
@@ -816,6 +895,20 @@
 						hits++;
 					});
 					search_results.appendChild(fragment);
+
+					// Mark the hits on their pages, and show the first on the page asked for
+					var seen = {};
+					as_array(result.items).forEach(function (annotation) {
+						var index = by_canvas[target_canvas(annotation.target)];
+						if (index !== undefined && !seen[index] && pages[index].hits) {
+							seen[index] = true;
+							draw_hits(pages[index]);
+						}
+					});
+					if (focus !== undefined && seen[focus]) {
+						go_to_hit(pages[focus].hits[0]);
+						focus = undefined;
+					}
 
 					var more = result.next && result.next.id && responses < SEARCH_RESPONSES;
 					status(more);
@@ -905,12 +998,7 @@
 		if (!button) {
 			return;
 		}
-		var old = search_results.querySelector('.current');
-		if (old) {
-			old.classList.remove('current');
-		}
-		button.classList.add('current');
-		go_to(parseInt(button.dataset.index, 10));
+		go_to_hit(button.hit);
 		if (narrow.matches) {
 			show_search(false);
 		}

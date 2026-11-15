@@ -359,6 +359,28 @@ body {
 	border-radius: 2px;
 }
 
+/* Search hits marked on the page (see draw_hits() in viewer.js), under its text */
+.viewer-hits {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+}
+
+.viewer-hits div {
+	position: absolute;
+	box-sizing: content-box;
+	margin: -2px 0 0 -2px;
+	padding: 2px;
+	border-radius: 2px;
+	background-color: rgba(250, 204, 21, 0.4);
+	mix-blend-mode: multiply;
+}
+
+.viewer-hits div.current {
+	background-color: rgba(249, 115, 22, 0.5);
+	outline: 2px solid rgb(234, 88, 12);
+}
+
 @media (max-width: 700px) {
 	.viewer-page {
 		width: 100%;

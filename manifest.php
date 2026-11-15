@@ -598,8 +598,9 @@ function search_service($scope, $id)
 
 //----------------------------------------------------------------------------------------
 // The hits in a page's text, from Elasticsearch's highlighting of the whole text with
-// $pre and $post around each matching word, as [prefix, exact, suffix]. Words of a
-// phrase, matched one by one, become one hit; prefix and suffix are up to about $context
+// $pre and $post around each matching word, as [prefix, exact, suffix, start, end],
+// start and end being where the hit is in the text (in bytes). Words of a phrase,
+// matched one by one, become one hit; prefix and suffix are up to about $context
 // characters, ending at a word.
 function text_hits($highlighted, $pre, $post, $context = 50)
 {
@@ -637,16 +638,208 @@ function text_hits($highlighted, $pre, $post, $context = 50)
 			$suffix = preg_replace('/\s\S*$/u', '', $suffix);
 		}
 
-		$hits[] = array(ltrim($prefix), $flat($pieces[$i]), rtrim($suffix));
+		$start = strlen(implode('', array_slice($pieces, 0, $i)));
+
+		$hits[] = array(ltrim($prefix), $flat($pieces[$i]), rtrim($suffix), $start, $start + strlen($pieces[$i]));
 	}
 
 	return $hits;
 }
 
 //----------------------------------------------------------------------------------------
+// The words of a text, for matching texts from different OCR: lower case, without
+// accents, split at anything not a letter or digit, so "Leaf-" and "leaf" match. Each
+// is [word, start, end], start and end being where it is in the text (in bytes).
+function match_words($text)
+{
+	preg_match_all('/[\p{L}\p{N}]+/u', $text, $m, PREG_OFFSET_CAPTURE);
+
+	$words = array();
+	foreach ($m[0] as $w)
+	{
+		$folded = preg_replace('/\p{Mn}+/u', '', Normalizer::normalize(mb_strtolower($w[0]), Normalizer::FORM_D));
+		$words[] = array($folded, $w[1], $w[1] + strlen($w[0]));
+	}
+	return $words;
+}
+
+//----------------------------------------------------------------------------------------
+// The OCR words of some pages, as PageID => list of boxes [x, y, w, h, text, line]
+function pages_word_boxes($pageids)
+{
+	$result = array();
+	if (count($pageids) == 0)
+	{
+		return $result;
+	}
+
+	$stmt = words_pdo()->prepare('SELECT PageID, words FROM page WHERE PageID IN ('
+		. implode(',', array_fill(0, count($pageids), '?')) . ')');
+	$stmt->execute(array_values($pageids));
+
+	foreach ($stmt->fetchAll(PDO::FETCH_NUM) as $row)
+	{
+		$boxes = array();
+		foreach (json_decode(gzdecode($row[1]))->lines as $l => $line)
+		{
+			foreach ($line as $word)
+			{
+				$word[] = $l;
+				$boxes[] = $word;
+			}
+		}
+		$result[$row[0]] = $boxes;
+	}
+	return $result;
+}
+
+//----------------------------------------------------------------------------------------
+// Matches a page's text (Elasticsearch's copy, BHL's OCR) to its OCR word boxes (the
+// Internet Archive's), which mostly have the same words, but not always. hit_boxes()
+// gives the boxes of the words in a part of the text.
+class TextBoxes
+{
+	var $text_words;  // match_words() of the text
+	var $boxes;       // [x, y, w, h, text, line]
+	var $box_words;   // [word, box index], match_words() of each box's text
+	var $same;        // whether the text and the boxes have the same words
+
+	function __construct($text, $boxes)
+	{
+		$this->text_words = match_words($text);
+		$this->boxes = $boxes;
+		$this->box_words = array();
+		foreach ($boxes as $b => $box)
+		{
+			foreach (match_words($box[4]) as $w)
+			{
+				$this->box_words[] = array($w[0], $b);
+			}
+		}
+
+		$this->same = count($this->text_words) == count($this->box_words);
+		for ($i = 0; $this->same && $i < count($this->text_words); $i++)
+		{
+			$this->same = $this->text_words[$i][0] == $this->box_words[$i][0];
+		}
+	}
+
+	// Where a run of words is in a list of words, as the indexes of its first words
+	static function find($run, $words)
+	{
+		$found = array();
+		$n = count($run);
+		for ($i = 0; $i + $n <= count($words); $i++)
+		{
+			$j = 0;
+			while ($j < $n && $words[$i + $j][0] == $run[$j])
+			{
+				$j++;
+			}
+			if ($j == $n)
+			{
+				$found[] = $i;
+			}
+		}
+		return $found;
+	}
+
+	// The boxes of the words in the text from byte $start to $end, as boxes on the
+	// canvas, [x, y, w, h], one for each line they are on; empty if not found
+	function hit_boxes($start, $end)
+	{
+		// The hit's words in the text
+		$first = -1;
+		$last = -1;
+		foreach ($this->text_words as $i => $w)
+		{
+			if ($w[2] > $start && $w[1] < $end)
+			{
+				if ($first < 0)
+				{
+					$first = $i;
+				}
+				$last = $i;
+			}
+		}
+		if ($first < 0)
+		{
+			return array();
+		}
+
+		// The same words in the boxes: in the same place if the words are the same,
+		// otherwise the same occurrence of them (the 2nd if it's the 2nd in the text),
+		// or the nearest in proportion if they occur a different number of times
+		$at = -1;
+		if ($this->same)
+		{
+			$at = $first;
+		}
+		else
+		{
+			$run = array();
+			for ($i = $first; $i <= $last; $i++)
+			{
+				$run[] = $this->text_words[$i][0];
+			}
+			$in_text  = self::find($run, $this->text_words);
+			$in_boxes = self::find($run, $this->box_words);
+
+			if (count($in_boxes) == count($in_text))
+			{
+				$at = $in_boxes[array_search($first, $in_text)];
+			}
+			elseif (count($in_boxes) > 0)
+			{
+				$where = $first / count($this->text_words);
+				$best = PHP_INT_MAX;
+				foreach ($in_boxes as $i)
+				{
+					$d = abs($i / count($this->box_words) - $where);
+					if ($d < $best)
+					{
+						$best = $d;
+						$at = $i;
+					}
+				}
+			}
+		}
+		if ($at < 0)
+		{
+			return array();
+		}
+
+		// One box for each line, around its words
+		$lines = array();
+		for ($i = $at; $i <= $at + $last - $first; $i++)
+		{
+			$box = $this->boxes[$this->box_words[$i][1]];
+			$l = $box[5];
+			if (!isset($lines[$l]))
+			{
+				$lines[$l] = array($box[0], $box[1], $box[0] + $box[2], $box[1] + $box[3]);
+			}
+			else
+			{
+				$lines[$l] = array(min($lines[$l][0], $box[0]), min($lines[$l][1], $box[1]),
+					max($lines[$l][2], $box[0] + $box[2]), max($lines[$l][3], $box[1] + $box[3]));
+			}
+		}
+
+		$result = array();
+		foreach ($lines as $r)
+		{
+			$result[] = array($r[0], $r[1], $r[2] - $r[0], $r[3] - $r[1]);
+		}
+		return $result;
+	}
+}
+
+//----------------------------------------------------------------------------------------
 // The hits for $q in the pages of an item or article ($scope 'item' or 'part'), in page
 // order, as a IIIF Content Search 2.0 AnnotationPage: for each hit, a highlighting
-// annotation of its page (for now the whole canvas; later the hit's words) and, in
+// annotation of its words on the page (a box for each line it is on, or the whole
+// canvas if its words can't be found among the page's OCR boxes) and, in
 // "annotations", a contextualizing annotation quoting it with its prefix and suffix.
 // $from counts pages with hits, SEARCH_PAGE_SIZE at a time; "next" gives the rest.
 function search_inside($scope, $id, $q, $from = 0)
@@ -700,6 +893,13 @@ function search_inside($scope, $id, $q, $from = 0)
 
 	$quotes = array();
 
+	$pageids = array();
+	foreach ($resp[1]->hits->hits as $hit)
+	{
+		$pageids[] = id_number($hit->_id);
+	}
+	$word_boxes = pages_word_boxes($pageids);
+
 	foreach ($resp[1]->hits->hits as $hit)
 	{
 		if (!isset($hit->highlight->text[0]))
@@ -709,15 +909,35 @@ function search_inside($scope, $id, $q, $from = 0)
 		$pageid = id_number($hit->_id);
 		$canvas = page_canvas_id($pageid);
 
-		foreach (text_hits($hit->highlight->text[0], $pre, $post) as $n => $quote)
+		$highlighted = $hit->highlight->text[0];
+		$boxes = isset($word_boxes[$pageid])
+			? new TextBoxes(str_replace(array($pre, $post), '', $highlighted), $word_boxes[$pageid])
+			: null;
+
+		foreach (text_hits($highlighted, $pre, $post) as $n => $quote)
 		{
 			$hit_id = site_url('iiif/search/' . $pageid . '/' . ($n + 1) . '/hit?q=' . rawurlencode($q));
+
+			// Its words' boxes, if we can find them
+			$target = array();
+			foreach ($boxes ? $boxes->hit_boxes($quote[3], $quote[4]) : array() as $box)
+			{
+				$target[] = $canvas . '#xywh=' . implode(',', $box);
+			}
+			if (count($target) == 0)
+			{
+				$target = $canvas;
+			}
+			elseif (count($target) == 1)
+			{
+				$target = $target[0];
+			}
 
 			$page->items[] = (object)array(
 				'id'         => $hit_id,
 				'type'       => 'Annotation',
 				'motivation' => 'highlighting',
-				'target'     => $canvas,
+				'target'     => $target,
 			);
 
 			$quotes[] = (object)array(
