@@ -1319,7 +1319,9 @@ function display_item($itemid)
 			echo '<li data-parts="' . htmlspecialchars($part->id) . '">';
 			echo '<span class="coverage-key" style="background:var(--part-' . $colour[$part->id] . ')"></span>';
 			echo '<div>';
-			echo '<a href="' . htmlspecialchars($part->id) . '">' . htmlspecialchars(isset($part->name) ? $part->name : $part->id) . '</a>';
+			// The article in the page viewer if we can show this item, otherwise at BHL
+			$href = $readable ? viewer_url(manifest_path($part->id)) : $part->id;
+			echo '<a href="' . htmlspecialchars($href) . '">' . htmlspecialchars(isset($part->name) ? $part->name : $part->id) . '</a>';
 			if (isset($part->author))
 			{
 				$authors = array();
@@ -1329,12 +1331,7 @@ function display_item($itemid)
 				}
 				echo '<p class="group-authors">' . htmlspecialchars(implode('; ', $authors)) . '</p>';
 			}
-			echo '<p class="hit-meta">' . htmlspecialchars(implode(' · ', $meta));
-			if ($readable)
-			{
-				echo ' · <a href="' . htmlspecialchars(viewer_url(manifest_path($part->id))) . '">Read</a>';
-			}
-			echo '</p>';
+			echo '<p class="hit-meta">' . htmlspecialchars(implode(' · ', $meta)) . '</p>';
 			echo '</div>';
 			echo '</li>';
 		}
