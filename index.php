@@ -54,13 +54,159 @@ function default_display($error_msg = '')
 	}
 	else
 	{
+		echo '<div class="home">';
 		echo '<h1>BHL in Elastic</h1>';
-		echo '<p>An interface to the Biodiversity Heritage Library, 
-		based on a subset of titles and items from <a href="https://iphylo.org/bhl-light">BHL-Light</a></p>';
+		echo '<p class="home-intro">An interface to the Biodiversity Heritage Library, built on one
+		Elasticsearch index of the titles, volumes, articles and pages in
+		<a href="https://iphylo.org/bhl-light">BHL-Light</a>, a subset of BHL.</p>';
+
+		echo '<h2 class="home-heading">Things to try</h2>';
+		echo '<div class="home-cards">';
+		foreach (home_cards() as $card)
+		{
+			display_home_card($card);
+		}
+		echo '</div>';
+
+		echo '<h2 class="home-heading">Coming later</h2>';
+		echo '<div class="home-cards home-cards-planned">';
+		foreach (home_planned() as $card)
+		{
+			display_home_card($card);
+		}
+		echo '</div>';
+		echo '</div>';
 	}
 
 	display_main_end();
 	display_html_end();
+}
+
+//----------------------------------------------------------------------------------------
+// What the home page shows off, each with a picture (part of a BHL page image: which
+// part, as a CSS position, and how far to zoom in on it) and examples to try
+function home_cards()
+{
+	global $config;
+
+	$image = function ($barcode, $seq) use ($config) {
+		return $config['bhl_images'] . '/web/' . $barcode . '/' . $barcode . '_' . sprintf('%04d', $seq) . '_large.webp';
+	};
+
+	$part = 'https://www.biodiversitylibrary.org/part/431953';
+
+	return array(
+		array(
+			'title'    => 'Search the text',
+			'href'     => '?q=' . urlencode('Gulella davisae'),
+			'image'    => $image('europeanjournal236muse', 5),
+			'position' => '0% 22%',
+			'zoom'     => 1.6,
+			'text'     => 'Search the text of every page. Results are grouped by article or volume, with the best pages and the words that matched.',
+			'examples' => array(
+				'Gulella davisae'  => '?q=' . urlencode('Gulella davisae'),
+				'mist-belt forest' => '?q=' . urlencode('mist-belt forest'),
+				'Syntomidae'       => '?q=Syntomidae',
+			),
+		),
+		array(
+			'title'    => 'Browse titles',
+			'href'     => '?type=titles',
+			'image'    => $image('catalogueoflepid01hamp', 7),
+			'position' => '50% 20%',
+			'zoom'     => 1.25,
+			'text'     => 'Journals, series and books, with their covers, filtered by subject, decade, language and more.',
+			'examples' => array(
+				'All titles'                     => '?type=titles',
+				'European Journal of Taxonomy'   => '?title=144642',
+				'Catalogue of the Lepidoptera Phalænæ' => '?title=9243',
+			),
+		),
+		array(
+			'title'    => 'See what is in a volume',
+			'href'     => '?item=61794',
+			'image'    => $image('ser8annalsmagazi09londuoft', 723),
+			'position' => '50% 22%',
+			'zoom'     => 1.1,
+			'text'     => 'A volume\'s articles, and which of its pages each one covers, so you can see what is there at a glance.',
+			'examples' => array(
+				'Annals and Magazine of Natural History, 1912' => '?item=61794',
+				'European Journal of Taxonomy no. 236'          => '?item=262715',
+			),
+		),
+		array(
+			'title'    => 'Read an article',
+			'href'     => '?part=431953',
+			'image'    => $image('europeanjournal236muse', 8),
+			'position' => '50% 52%',
+			'zoom'     => 1.5,
+			'text'     => 'A page viewer that loads fast and lets you select and copy the text. Search inside an article or volume and see the hits on the page.',
+			'examples' => array(
+				'New narrow-range endemic land snails' => '?part=431953',
+				'Search inside it for “Gulella”'        => viewer_url(manifest_path($part), '', 'Gulella'),
+			),
+		),
+		array(
+			'title'    => 'Match citations',
+			'href'     => 'match.php',
+			'image'    => $image('europeanjournal236muse', 27),
+			'position' => '0% 80%',
+			'zoom'     => 1.7,
+			'text'     => 'Paste a list of references and find the articles they cite. Also a reconciliation service for tools such as OpenRefine.',
+			'examples' => array(
+				'Match citations' => 'match.php',
+			),
+		),
+	);
+}
+
+//----------------------------------------------------------------------------------------
+// Things we plan to add, for the home page
+function home_planned()
+{
+	return array(
+		array('title' => 'Map', 'text' => 'Places mentioned in the text, on a map, to find what has been written about a place.'),
+		array('title' => 'Browse by taxon', 'text' => 'Taxonomic names found in the text, arranged in their classification.'),
+		array('title' => 'Timeline', 'text' => 'When a name or topic appears in the literature, year by year.'),
+		array('title' => 'Search images', 'text' => 'Find plates and figures, not just text.'),
+	);
+}
+
+//----------------------------------------------------------------------------------------
+// One card on the home page (see home_cards()); a card with no href is a plan
+function display_home_card($card)
+{
+	$planned = !isset($card['href']);
+
+	echo '<article class="home-card' . ($planned ? ' home-card-planned' : '') . '">';
+
+	if (isset($card['image']))
+	{
+		echo '<a class="home-card-image" href="' . htmlspecialchars($card['href']) . '" tabindex="-1" aria-hidden="true">';
+		$position = htmlspecialchars($card['position']);
+		echo '<img loading="lazy" src="' . htmlspecialchars($card['image']) . '" alt=""'
+			. ' style="object-position: ' . $position . '; transform-origin: ' . $position
+			. '; transform: scale(' . (float)$card['zoom'] . ')">';
+		echo '</a>';
+	}
+
+	echo '<div class="home-card-body">';
+	echo '<h3>' . ($planned ? htmlspecialchars($card['title'])
+		: '<a href="' . htmlspecialchars($card['href']) . '">' . htmlspecialchars($card['title']) . '</a>') . '</h3>';
+	echo '<p>' . htmlspecialchars($card['text']) . '</p>';
+
+	if (isset($card['examples']))
+	{
+		echo '<ul class="home-card-examples">';
+		foreach ($card['examples'] as $label => $href)
+		{
+			echo '<li><a href="' . htmlspecialchars($href) . '">' . htmlspecialchars($label) . '</a></li>';
+		}
+		echo '</ul>';
+	}
+
+	echo '</div>';
+	echo '</article>';
 }
 
 
@@ -1257,6 +1403,15 @@ function main()
 	if (isset($_GET['item']))
 	{
 		display_item((int)$_GET['item']);
+		exit(0);
+	}
+
+	// Show an article: in the page viewer if we can, otherwise at BHL
+	if (isset($_GET['part']))
+	{
+		$url = 'https://www.biodiversitylibrary.org/part/' . (int)$_GET['part'];
+		$readable = works_with_manifests(array($url));
+		header('Location: ' . (isset($readable[$url]) ? viewer_url(manifest_path($url)) : $url));
 		exit(0);
 	}
 

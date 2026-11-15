@@ -91,7 +91,7 @@ document.getElementById('match').addEventListener('click', function () {
 					matched++;
 					var td = cell(row, '');
 					var a = document.createElement('a');
-					a.href = 'https://www.biodiversitylibrary.org/part/' + best.id;
+					a.href = '?part=' + encodeURIComponent(best.id);
 					a.textContent = best.name;
 					td.appendChild(a);
 					cell(row, best.score);

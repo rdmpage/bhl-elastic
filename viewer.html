@@ -11,7 +11,9 @@
 
 	#page= is the page's position in the item (1, 2, ...), as in PDF URLs (RFC 3778);
 	#canvas= (a canvas id, URL-encoded) opens at that canvas instead.
-	The button at the left of the bar shows thumbnails of all pages, to move around fast.
+	The house at the left of the bar goes back to the site's home page (change its href
+	to use the viewer on another site); the button beside it shows thumbnails of all
+	pages, to move around fast.
 	If the manifest has a search service (IIIF Content Search 2.0), the button at the
 	right searches inside it; &q= in the URL runs a search when the viewer opens.
 	The button beside it shows the text of the page showing, if the manifest has text.
@@ -22,6 +24,9 @@
 </head>
 <body>
 <header class="viewer-bar">
+	<a href="./" class="viewer-toggle" title="Home" aria-label="Home">
+		<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M8 1.5L1 7.5h2V14.5h3.75v-4.5h2.5v4.5H13V7.5h2z"/></svg>
+	</a>
 	<button type="button" id="viewer-thumbs-toggle" class="viewer-toggle" aria-controls="viewer-thumbs" aria-expanded="false" title="Thumbnails">
 		<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
 	</button>

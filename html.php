@@ -31,6 +31,7 @@ function display_html_start($title = '', $entity = null)
 	require_once (dirname(__FILE__) . '/body.css.inc.php');
 	require_once (dirname(__FILE__) . '/nav.css.inc.php');
 	require_once (dirname(__FILE__) . '/results.css.inc.php');
+	require_once (dirname(__FILE__) . '/home.css.inc.php');
 	echo '</style>' . "\n";		
 	
 	if ($entity)
