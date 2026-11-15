@@ -7,7 +7,8 @@
 //   iiif.php?page=57579635   (a page's text, line by line, as an AnnotationPage)
 //
 // text=word gives text word by word (in a manifest, its canvases link to their pages'
-// words), and text=none leaves text out of a manifest.
+// words), text=page each page's text as indexed, without boxes (what a page with no
+// OCR words gets anyway), and text=none leaves text out of a manifest.
 //
 // Open one in the viewer with viewer.html?manifest=iiif.php%3Fitem%3D262715
 
@@ -30,13 +31,13 @@ function send_manifest($status, $obj)
 //----------------------------------------------------------------------------------------
 function main()
 {
-	$text = isset($_GET['text']) && in_array($_GET['text'], array('word', 'none')) ? $_GET['text'] : 'line';
+	$text = isset($_GET['text']) && in_array($_GET['text'], array('word', 'page', 'none')) ? $_GET['text'] : 'line';
 
 	try
 	{
 		if (isset($_GET['page']))
 		{
-			$page = page_annotations((int)$_GET['page'], $text == 'word' ? 'word' : 'line');
+			$page = page_annotations((int)$_GET['page'], $text == 'none' ? 'line' : $text);
 			$page ? send_manifest(200, $page) : send_manifest(404, array('error' => 'No text for page'));
 		}
 		elseif (isset($_GET['item']))

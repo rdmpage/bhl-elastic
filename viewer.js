@@ -16,6 +16,10 @@
 // invisible text, each piece stretched to fill its box, so it can be selected and
 // copied. It is dropped again with the full image.
 //
+// Text with no box (textGranularity page, say: OCR that gives no word positions) is not
+// laid over the image, but it is shown, with any other text, in the text panel at the
+// right, which shows the text of the page showing.
+//
 // Thumbnails of all pages, for moving around fast, are built the first time they are
 // shown: beside the pages on wide screens, following the page showing, and over them on
 // phones, closing when a page is chosen. Thumbnails of pages in an article have a bar
@@ -25,6 +29,8 @@
 // panel at the right searches inside it and lists the hits by page, each in its
 // context (the TextQuoteSelector of its contextualizing annotation). Hits whose target
 // is a box (#xywh=), or several, are marked on their pages; choosing a hit goes to it.
+// Hits are also marked in the text panel, found by their quote; choosing a hit with no
+// box opens the text panel at it.
 // ?q= in the viewer's URL runs a search when it opens, and is kept up to date, so a
 // search can be linked to; the first hit on the page asked for is then shown.
 //
@@ -47,6 +53,11 @@
 	var search_input   = document.getElementById('viewer-search-q');
 	var search_status  = document.getElementById('viewer-search-status');
 	var search_results = document.getElementById('viewer-search-results');
+	var side           = document.getElementById('viewer-side');
+	var text_panel     = document.getElementById('viewer-text');
+	var text_toggle    = document.getElementById('viewer-text-toggle');
+	var text_label     = document.getElementById('viewer-text-label');
+	var text_body      = document.getElementById('viewer-text-body');
 
 	var pages   = [];   // { canvas, label, thumbnail, image, service, el, img, ... }
 	var ranges  = [];   // { label, first, last } as page indexes
@@ -54,6 +65,7 @@
 	var by_canvas = {};  // page index by canvas id
 	var search_service = null;  // id of the manifest's search service
 	var search_run = 0;         // counts searches, so replies to old ones are dropped
+	var current_hit = null;     // the search hit chosen
 
 	// How long a page must be in view before its full image is fetched (ms)
 	var DWELL = 150;
@@ -287,6 +299,7 @@
 			return;
 		}
 		page.text_loading = true;
+		var unplaced = [];
 
 		Promise.all(page.annotation_pages.map(function (annotation_page) {
 			if (annotation_page.items) {
@@ -310,15 +323,118 @@
 					var text = body_text(annotation.body);
 					if (box && text && box[2] > 0 && box[3] > 0) {
 						items.push({ box: box, text: text, granularity: annotation.textGranularity });
+					} else if (text && !box) {
+						unplaced.push(text);
 					}
 				});
 			});
 			page.text_items = items;
+			page.text_unplaced = unplaced.join('\n\n');
 			page.text_loading = false;
 			if (page.state === 'full' || page.loading) {
 				draw_text(page);
 			}
+			if (page.index === current) {
+				show_page_text();
+			}
 		});
+	}
+
+	// A page's text, for the text panel: its text without boxes if it has any, otherwise
+	// the pieces laid over the image, joined as when copied; null if not loaded yet
+	function page_text(page) {
+		if (!page.text_items) {
+			return page.annotation_pages.length === 0 ? '' : null;
+		}
+		if (page.text_unplaced) {
+			return page.text_unplaced;
+		}
+		return page.text_items.map(function (item, i) {
+			return item.text + text_separator(item, page.text_items[i + 1]);
+		}).join('').replace(/\s+$/, '');
+	}
+
+	// Where a search hit's quote is in a text, from from on, as [start, end], or null:
+	// the first place of its exact text whose text before ends with its prefix, or else
+	// the first place of its exact text
+	function find_quote(text, quote, from) {
+		var exact = quote.exact.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+		if (!exact) {
+			return null;
+		}
+		var re = new RegExp(exact, 'g');
+		re.lastIndex = from;
+		var prefix = (quote.prefix || '').replace(/\s+/g, ' ').trim();
+		var first = null;
+		var m;
+		while ((m = re.exec(text)) !== null) {
+			var range = [m.index, m.index + m[0].length];
+			if (!first) {
+				first = range;
+			}
+			var before = text.slice(Math.max(0, m.index - 2 * prefix.length - 10), m.index).replace(/\s+/g, ' ').trim();
+			if (prefix && before.slice(-prefix.length) === prefix) {
+				return range;
+			}
+		}
+		return first;
+	}
+
+	// Show the text of the page showing in the text panel, with its search hits marked
+	function show_page_text() {
+		if (text_panel.hidden || current < 0) {
+			return;
+		}
+		var page = pages[current];
+		text_label.textContent = page.label || '[' + (current + 1) + ']';
+
+		var text = page_text(page);
+		if (text === null) {
+			text_body.className = 'viewer-text-body viewer-text-none';
+			text_body.textContent = 'Loading…';
+			load_text(page);
+			return;
+		}
+		if (text === '') {
+			text_body.className = 'viewer-text-body viewer-text-none';
+			text_body.textContent = 'No text for this page.';
+			return;
+		}
+
+		// The hits, which come in the order they are in the text, each found after the
+		// one before
+		var marks = [];
+		var from = 0;
+		(page.hits || []).forEach(function (hit) {
+			var range = hit.quote ? find_quote(text, hit.quote, from) : null;
+			if (range) {
+				marks.push({ start: range[0], end: range[1], hit: hit });
+				from = range[1];
+			}
+		});
+
+		text_body.className = 'viewer-text-body';
+		text_body.textContent = '';
+		var at = 0;
+		var current_mark = null;
+		marks.forEach(function (m) {
+			text_body.appendChild(document.createTextNode(text.slice(at, m.start)));
+			var mark = document.createElement('mark');
+			mark.textContent = text.slice(m.start, m.end);
+			if (m.hit === current_hit) {
+				mark.className = 'current';
+				current_mark = mark;
+			}
+			text_body.appendChild(mark);
+			at = m.end;
+		});
+		text_body.appendChild(document.createTextNode(text.slice(at)));
+
+		if (current_mark) {
+			text_body.scrollTop = current_mark.offsetTop - text_body.offsetTop - text_body.clientHeight / 3;
+		} else {
+			text_body.scrollTop = 0;
+		}
 	}
 
 	// What follows a piece of text when copied: a line break after a line, or after a
@@ -432,6 +548,8 @@
 		}
 
 		history.replaceState(null, '', '#page=' + (index + 1));
+
+		show_page_text();
 
 		if (in_iframe) {
 			window.parent.postMessage({
@@ -580,6 +698,10 @@
 			show_thumbs(true);
 		}
 
+		if (pages.some(function (page) { return page.annotation_pages.length > 0; })) {
+			text_toggle.hidden = false;
+		}
+
 		search_service = find_search_service(manifest);
 		if (search_service) {
 			search_toggle.hidden = false;
@@ -652,6 +774,7 @@
 		}
 		if (show && narrow.matches) {
 			show_search(false);
+			show_text(false);
 		}
 		thumbs.hidden = !show;
 		thumbs_toggle.setAttribute('aria-expanded', show ? 'true' : 'false');
@@ -690,20 +813,35 @@
 		return null;
 	}
 
-	function show_search(show) {
-		if (show === !search_panel.hidden) {
-			return;
+	// Open or close one of the panels at the right (search, or text), which share a
+	// column; the column shows if either is open
+	function show_side(panel, toggle, show) {
+		if (show === !panel.hidden) {
+			return false;
 		}
 		if (show && narrow.matches && !thumbs.hidden) {
 			show_thumbs(false);
 		}
-		search_panel.hidden = !show;
-		search_toggle.setAttribute('aria-expanded', show ? 'true' : 'false');
-		if (current >= 0 && !narrow.matches) {
+		var was_open = !side.hidden;
+		panel.hidden = !show;
+		toggle.setAttribute('aria-expanded', show ? 'true' : 'false');
+		side.hidden = search_panel.hidden && text_panel.hidden;
+		// The page showing stays in view when the pages get narrower or wider
+		if (current >= 0 && !narrow.matches && was_open !== !side.hidden) {
 			go_to(current);
 		}
-		if (show && !search_input.value) {
+		return true;
+	}
+
+	function show_search(show) {
+		if (show_side(search_panel, search_toggle, show) && show && !search_input.value) {
 			search_input.focus();
+		}
+	}
+
+	function show_text(show) {
+		if (show_side(text_panel, text_toggle, show) && show) {
+			show_page_text();
 		}
 	}
 
@@ -754,6 +892,8 @@
 			}
 			page.hits = null;
 		});
+		current_hit = null;
+		show_page_text();
 	}
 
 	// Show a hit: mark it and its entry in the list as current, and scroll its first
@@ -769,10 +909,14 @@
 		}
 		hit.button.classList.add('current');
 		hit.button.scrollIntoView({ block: 'nearest' });
+		current_hit = hit;
 
+		// A hit with no box on the page is shown in the text
 		var page = pages[hit.index];
 		if (!hit.els || hit.els.length === 0) {
 			go_to(hit.index);
+			show_text(true);
+			show_page_text();
 			return;
 		}
 		hit.els.forEach(function (el) {
@@ -780,6 +924,9 @@
 		});
 		var top = page.el.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop;
 		scroller.scrollTop = top + page.el.clientHeight * hit.boxes[0][1] / page.height - scroller.clientHeight / 3;
+		if (hit.index === current) {
+			show_page_text();
+		}
 	}
 
 	// Search, and list the hits as they come in, page by page. If focus is a page
@@ -882,6 +1029,7 @@
 						button.hit = hit;
 						hit.button = button;
 						var quote = quotes[annotation.id];
+						hit.quote = quote;
 						if (quote) {
 							button.appendChild(document.createTextNode((quote.prefix ? '…' + quote.prefix : '')));
 							var mark = document.createElement('mark');
@@ -905,6 +1053,9 @@
 							draw_hits(pages[index]);
 						}
 					});
+					if (seen[current]) {
+						show_page_text();
+					}
 					if (focus !== undefined && seen[focus]) {
 						go_to_hit(pages[focus].hits[0]);
 						focus = undefined;
@@ -988,6 +1139,10 @@
 		show_search(search_panel.hidden);
 	});
 
+	text_toggle.addEventListener('click', function () {
+		show_text(text_panel.hidden);
+	});
+
 	search_form.addEventListener('submit', function (event) {
 		event.preventDefault();
 		run_search(search_input.value.trim());
@@ -1010,6 +1165,7 @@
 				show_thumbs(false);
 			}
 			show_search(false);
+			show_text(false);
 		}
 	});
 

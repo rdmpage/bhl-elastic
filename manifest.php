@@ -16,7 +16,10 @@
 // only when a viewer shows the page: an annotation for each line, or each word, of the
 // OCR, with its box on the canvas. TIFY shows these as boxes and as a text panel (lines
 // suit it best); viewer.html lays the text over the image so it can be selected (words
-// suit it best). Manifests take text=line (the default), word, or none.
+// suit it best). A page with no OCR words (text from an LLM, say) gets its text as it is
+// indexed instead, as one annotation of the whole canvas (textGranularity page), which
+// viewers can show beside the page. Manifests take text=line (the default), word, page
+// (that text for every page), or none.
 
 require_once (dirname(__FILE__) . '/search.php');
 require_once (dirname(__FILE__) . '/records.php');
@@ -276,7 +279,7 @@ function page_canvas($page, $seq, $sizes, $text = 'line')
 	if ($text != 'none')
 	{
 		$canvas->annotations = array((object)array(
-			'id'   => site_url('iiif.php?page=' . $pageid . ($text == 'word' ? '&text=word' : '')),
+			'id'   => site_url('iiif.php?page=' . $pageid . text_param($text)),
 			'type' => 'AnnotationPage',
 		));
 	}
@@ -295,38 +298,60 @@ function text_param($text)
 // A page's text as a IIIF AnnotationPage: an annotation for each line (or, with $text
 // 'word', each word) of the OCR, whose body is the text and whose target is its box on
 // the canvas (canvas pixels are the OCR's). A line's box is the union of its words'.
-// Null if we have no words for the page.
+// With $text 'page', or if we have no words for the page, one annotation of the whole
+// canvas with the page's text as indexed. Null if we have no text for the page.
 function page_annotations($pageid, $text = 'line')
 {
-	$stmt = words_pdo()->prepare('SELECT words FROM page WHERE PageID = ?');
-	$stmt->execute(array((int)$pageid));
-	$blob = $stmt->fetchColumn();
-
-	if ($blob === false)
+	$words = null;
+	if ($text != 'page')
 	{
-		return null;
+		$stmt = words_pdo()->prepare('SELECT words FROM page WHERE PageID = ?');
+		$stmt->execute(array((int)$pageid));
+		$blob = $stmt->fetchColumn();
+		if ($blob !== false)
+		{
+			$words = json_decode(gzdecode($blob));
+			$count = 0;
+			foreach ($words->lines as $line)
+			{
+				$count += count($line);
+			}
+			if ($count == 0)
+			{
+				$words = null;
+			}
+		}
 	}
-
-	$words = json_decode(gzdecode($blob));
 
 	$canvas_id = page_canvas_id($pageid);
 
 	$page = new stdclass;
 	$page->{'@context'} = array(TEXT_GRANULARITY_CONTEXT, IIIF_CONTEXT);
-	$page->id    = site_url('iiif.php?page=' . (int)$pageid . ($text == 'word' ? '&text=word' : ''));
+	$page->id    = site_url('iiif.php?page=' . (int)$pageid . text_param($text));
 	$page->type  = 'AnnotationPage';
 	$page->items = array();
 
-	$annotation = function ($n, $box, $value) use ($canvas_id, $text) {
+	$annotation = function ($n, $granularity, $target, $value) use ($canvas_id) {
 		return (object)array(
-			'id'              => $canvas_id . '/' . $text . '/' . $n,
+			'id'              => $canvas_id . '/' . $granularity . '/' . $n,
 			'type'            => 'Annotation',
 			'motivation'      => 'supplementing',
-			'textGranularity' => $text,
+			'textGranularity' => $granularity,
 			'body'            => (object)array('type' => 'TextualBody', 'value' => $value, 'format' => 'text/plain'),
-			'target'          => $canvas_id . '#xywh=' . implode(',', $box),
+			'target'          => $target,
 		);
 	};
+
+	if (!$words)
+	{
+		$value = page_text($pageid);
+		if ($value == '')
+		{
+			return null;
+		}
+		$page->items[] = $annotation(1, 'page', $canvas_id, $value);
+		return $page;
+	}
 
 	$n = 0;
 	foreach ($words->lines as $line)
@@ -335,7 +360,7 @@ function page_annotations($pageid, $text = 'line')
 		{
 			foreach ($line as $word)
 			{
-				$page->items[] = $annotation(++$n, array_slice($word, 0, 4), $word[4]);
+				$page->items[] = $annotation(++$n, 'word', $canvas_id . '#xywh=' . implode(',', array_slice($word, 0, 4)), $word[4]);
 			}
 		}
 		elseif (count($line) > 0)
@@ -351,11 +376,23 @@ function page_annotations($pageid, $text = 'line')
 				$y2 = max($y2, $word[1] + $word[3]);
 				$strings[] = $word[4];
 			}
-			$page->items[] = $annotation(++$n, array($x1, $y1, $x2 - $x1, $y2 - $y1), implode(' ', $strings));
+			$page->items[] = $annotation(++$n, 'line', $canvas_id . '#xywh=' . implode(',', array($x1, $y1, $x2 - $x1, $y2 - $y1)), implode(' ', $strings));
 		}
 	}
 
 	return $page;
+}
+
+//----------------------------------------------------------------------------------------
+// A page's text as indexed (BHL's OCR, cleaned by ocr_clean()), or ''
+function page_text($pageid)
+{
+	global $config;
+
+	$elastic = new ElasticSearch($config['elastic_options']);
+	$resp = $elastic->send('GET', '_doc/page_' . (int)$pageid . '?_source=text');
+
+	return $resp[0] == 200 && isset($resp[1]->_source->text) ? $resp[1]->_source->text : '';
 }
 
 //----------------------------------------------------------------------------------------

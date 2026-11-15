@@ -267,8 +267,9 @@ body {
 	background-color: rgba(37, 99, 235, 0.3);
 }
 
-/* Search inside, beside the pages on the right */
-.viewer-search {
+/* Search inside and the page's text, beside the pages on the right, one above the
+   other if both are open */
+.viewer-side {
 	flex: none;
 	width: 20em;
 	display: flex;
@@ -279,8 +280,22 @@ body {
 	min-height: 0;
 }
 
-.viewer-search[hidden] {
+.viewer-side[hidden],
+.viewer-search[hidden],
+.viewer-text-panel[hidden] {
 	display: none;
+}
+
+.viewer-search,
+.viewer-text-panel {
+	flex: 1 1 0;
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+}
+
+.viewer-search + .viewer-text-panel:not([hidden]) {
+	border-top: 1px solid var(--viewer-bar-border);
 }
 
 .viewer-search-form {
@@ -359,6 +374,44 @@ body {
 	border-radius: 2px;
 }
 
+/* The page's text: as the OCR gives it, so line breaks are kept */
+.viewer-text-label {
+	flex: none;
+	margin: 0;
+	padding: 0.75em 0.75em 0.25em 0.75em;
+	font-size: 0.85em;
+	font-weight: 600;
+}
+
+.viewer-text-body {
+	flex: 1 1 auto;
+	overflow-y: auto;
+	padding: 0.25em 0.75em 0.75em 0.75em;
+	font-family: Georgia, "Times New Roman", serif;
+	font-size: 0.95em;
+	line-height: 1.5;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	user-select: text;
+	-webkit-user-select: text;
+}
+
+.viewer-text-body.viewer-text-none {
+	font-family: inherit;
+	font-style: italic;
+	opacity: 0.75;
+}
+
+.viewer-text-body mark {
+	color: inherit;
+	background-color: var(--viewer-mark);
+	border-radius: 2px;
+}
+
+.viewer-text-body mark.current {
+	outline: 2px solid rgb(234, 88, 12);
+}
+
 /* Search hits marked on the page (see draw_hits() in viewer.js), under its text */
 .viewer-hits {
 	position: absolute;
@@ -399,8 +452,8 @@ body {
 		z-index: 10;
 		border-right: none;
 	}
-	/* Search covers the pages too */
-	.viewer-search {
+	/* Search and text cover the pages too */
+	.viewer-side {
 		position: absolute;
 		inset: 0;
 		width: auto;
