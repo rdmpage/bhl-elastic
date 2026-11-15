@@ -18,6 +18,12 @@
 //
 //   php test-jsonld.php     (exits with 1 if any case has errors)
 
+// Command line only
+if (PHP_SAPI != 'cli')
+{
+	exit(1);
+}
+
 error_reporting(E_ALL);
 
 require_once (dirname(__FILE__) . '/vendor/autoload.php');

@@ -19,6 +19,12 @@
 // afterwards; building them before the data is loaded would slow the import down for
 // no reason.
 
+// Command line only
+if (PHP_SAPI != 'cli')
+{
+	exit(1);
+}
+
 require_once(dirname(__FILE__) . '/sqlite.php');
 
 $basedir = dirname(__FILE__) . '/bhldata';

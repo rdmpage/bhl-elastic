@@ -12,6 +12,12 @@
 // the original (load-ocr.php --archive works on it). --out ending in .zst is compressed
 // with zstd, otherwise a plain .tar is written. part/ entries are not copied.
 
+// Command line only
+if (PHP_SAPI != 'cli')
+{
+	exit(1);
+}
+
 require_once (dirname(__FILE__) . '/ocr.php');
 
 $options = getopt('', array('archive:', 'items:', 'out:'));

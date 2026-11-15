@@ -10,6 +10,12 @@
 //   php test-align.php            (200 pages)
 //   php test-align.php 1000
 
+// Command line only
+if (PHP_SAPI != 'cli')
+{
+	exit(1);
+}
+
 require_once (dirname(__FILE__) . '/manifest.php');
 
 mt_srand(42);

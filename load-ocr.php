@@ -29,6 +29,12 @@
 //
 // part/ entries are counted and skipped: page-to-part membership comes from partpage.
 
+// Command line only
+if (PHP_SAPI != 'cli')
+{
+	exit(1);
+}
+
 require_once (dirname(__FILE__) . '/sqlite.php');
 require_once (dirname(__FILE__) . '/elastic.php');
 require_once (dirname(__FILE__) . '/ocr.php');

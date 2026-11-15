@@ -1,0 +1,16 @@
+# What Apache serves of this folder (https://iphylo.org/bhl-elastic/): the web pages,
+# the viewer, and the APIs. Everything else answers "not found": the databases (many
+# gigabytes), the data and its notes, git, local settings, tests, and the scripts that
+# load the data, which are for the command line (they also refuse to run otherwise).
+
+Options -Indexes
+
+# Folders of data, git, libraries and tests
+RedirectMatch 404 /(\.git|bhldata|bhlocr|bhl-ocr-store|cache|vendor|testsets)(/|$)
+
+# Databases, data files, requests saved from an HTTP client, local settings
+RedirectMatch 404 \.(db|db-shm|db-wal|db-journal|sqlite|sql|ndjson|tsv|checkpoint|request|lock)$
+RedirectMatch 404 /(\.DS_Store|\.gitignore|env\.php|env-template\.php|composer\.json|couchdb-items-titles\.json|index\.json)$
+
+# Command-line scripts
+RedirectMatch 404 /(extract-items|import|load-metadata|load-ocr|test-align|test-jsonld|test-queries)\.php$

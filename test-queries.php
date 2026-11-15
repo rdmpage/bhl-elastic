@@ -6,6 +6,12 @@
 //
 //   php test-queries.php [testsets/queries.txt] [N]
 
+// Command line only
+if (PHP_SAPI != 'cli')
+{
+	exit(1);
+}
+
 require_once (dirname(__FILE__) . '/search.php');
 
 $file = isset($argv[1]) ? $argv[1] : dirname(__FILE__) . '/testsets/queries.txt';

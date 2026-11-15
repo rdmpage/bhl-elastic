@@ -7,7 +7,12 @@ date_default_timezone_set('UTC');
 
 // Webserver
 $config['site_name'] = "BHL Elastic";
-$config['web_root'] = "/";
+// Where the site is on the web server, ending in "/": "/" when it is the server's root
+// (php -S in development), "/bhl-elastic/" when it is a folder of iphylo.org. Worked out
+// from the URL of the script running, as every page is a script in this folder.
+$config['web_root'] = PHP_SAPI != 'cli' && isset($_SERVER['SCRIPT_NAME'])
+	? rtrim(dirname($_SERVER['SCRIPT_NAME']), '/') . '/'
+	: '/';
 
 // Cache----------------------------------------------------------------------------------
 $config['cache'] = dirname(__FILE__) . '/cache';

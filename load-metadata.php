@@ -20,6 +20,12 @@
 // Documents are keyed item_<ItemID>, part_<PartID> and title_<TitleID>, so a re-run
 // overwrites rather than duplicates.
 
+// Command line only
+if (PHP_SAPI != 'cli')
+{
+	exit(1);
+}
+
 require_once (dirname(__FILE__) . '/sqlite.php');
 require_once (dirname(__FILE__) . '/elastic.php');
 require_once (dirname(__FILE__) . '/ocr.php');
