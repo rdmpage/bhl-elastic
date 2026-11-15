@@ -11,11 +11,26 @@
 //
 // A page is a canvas whose id is the same in every manifest it is in, so an article's
 // pages are the same canvases as in its item's manifest.
+//
+// Each canvas links to an AnnotationPage of the page's text (page_annotations()), fetched
+// only when a viewer shows the page: an annotation for each line, or each word, of the
+// OCR, with its box on the canvas. TIFY shows these as boxes and as a text panel (lines
+// suit it best); viewer.html lays the text over the image so it can be selected (words
+// suit it best). Manifests take text=line (the default), word, or none.
 
 require_once (dirname(__FILE__) . '/search.php');
 require_once (dirname(__FILE__) . '/records.php');
 
 define('IIIF_CONTEXT', 'http://iiif.io/api/presentation/3/context.json');
+
+// For textGranularity (https://iiif.io/api/extension/text-granularity/)
+define('TEXT_GRANULARITY_CONTEXT', 'http://iiif.io/api/extension/text-granularity/context.json');
+
+// IIIF Content Search 2.0, for searching inside an item or article (search_inside())
+define('SEARCH_CONTEXT', 'http://iiif.io/api/search/2/context.json');
+
+// Pages of hits in each response from search_inside(); the rest follow through "next"
+define('SEARCH_PAGE_SIZE', 50);
 
 // We have no manifest for this, as opposed to something going wrong (404 rather than 502)
 class NoManifest extends Exception {}
@@ -196,23 +211,25 @@ function page_canvas_id($pageid)
 
 //----------------------------------------------------------------------------------------
 // The page viewer showing a manifest (a URL relative to this site), at a page if a BHL
-// page URL is given
-function viewer_url($manifest, $page_url = '')
+// page URL is given, and searching inside it for $q if given
+function viewer_url($manifest, $page_url = '', $q = '')
 {
 	return 'viewer.html?manifest=' . rawurlencode($manifest)
+		. ($q != '' ? '&q=' . rawurlencode($q) : '')
 		. ($page_url != '' ? '#canvas=' . rawurlencode(page_canvas_id(url_number($page_url))) : '');
 }
 
 //----------------------------------------------------------------------------------------
-// The manifest for a BHL part or item URL, relative to this site
+// The manifest for a BHL part or item URL, relative to this site, with text as words,
+// as viewer.html wants
 function manifest_path($url)
 {
-	return 'iiif.php?' . (preg_match('/\/part\//', $url) ? 'part' : 'item') . '=' . url_number($url);
+	return 'iiif.php?' . (preg_match('/\/part\//', $url) ? 'part' : 'item') . '=' . url_number($url) . '&text=word';
 }
 
 //----------------------------------------------------------------------------------------
 // One page of an item's JSON-LD as a canvas. $seq is its place in the item.
-function page_canvas($page, $seq, $sizes)
+function page_canvas($page, $seq, $sizes, $text = 'line')
 {
 	global $config;
 
@@ -255,7 +272,89 @@ function page_canvas($page, $seq, $sizes)
 		)),
 	));
 
+	if ($text != 'none')
+	{
+		$canvas->annotations = array((object)array(
+			'id'   => site_url('iiif.php?page=' . $pageid . ($text == 'word' ? '&text=word' : '')),
+			'type' => 'AnnotationPage',
+		));
+	}
+
 	return $canvas;
+}
+
+//----------------------------------------------------------------------------------------
+// The text= parameter of a manifest's URL (nothing for the default, line)
+function text_param($text)
+{
+	return $text == 'line' ? '' : '&text=' . $text;
+}
+
+//----------------------------------------------------------------------------------------
+// A page's text as a IIIF AnnotationPage: an annotation for each line (or, with $text
+// 'word', each word) of the OCR, whose body is the text and whose target is its box on
+// the canvas (canvas pixels are the OCR's). A line's box is the union of its words'.
+// Null if we have no words for the page.
+function page_annotations($pageid, $text = 'line')
+{
+	$stmt = words_pdo()->prepare('SELECT words FROM page WHERE PageID = ?');
+	$stmt->execute(array((int)$pageid));
+	$blob = $stmt->fetchColumn();
+
+	if ($blob === false)
+	{
+		return null;
+	}
+
+	$words = json_decode(gzdecode($blob));
+
+	$canvas_id = page_canvas_id($pageid);
+
+	$page = new stdclass;
+	$page->{'@context'} = array(TEXT_GRANULARITY_CONTEXT, IIIF_CONTEXT);
+	$page->id    = site_url('iiif.php?page=' . (int)$pageid . ($text == 'word' ? '&text=word' : ''));
+	$page->type  = 'AnnotationPage';
+	$page->items = array();
+
+	$annotation = function ($n, $box, $value) use ($canvas_id, $text) {
+		return (object)array(
+			'id'              => $canvas_id . '/' . $text . '/' . $n,
+			'type'            => 'Annotation',
+			'motivation'      => 'supplementing',
+			'textGranularity' => $text,
+			'body'            => (object)array('type' => 'TextualBody', 'value' => $value, 'format' => 'text/plain'),
+			'target'          => $canvas_id . '#xywh=' . implode(',', $box),
+		);
+	};
+
+	$n = 0;
+	foreach ($words->lines as $line)
+	{
+		if ($text == 'word')
+		{
+			foreach ($line as $word)
+			{
+				$page->items[] = $annotation(++$n, array_slice($word, 0, 4), $word[4]);
+			}
+		}
+		elseif (count($line) > 0)
+		{
+			$x1 = $y1 = PHP_INT_MAX;
+			$x2 = $y2 = 0;
+			$strings = array();
+			foreach ($line as $word)
+			{
+				$x1 = min($x1, $word[0]);
+				$y1 = min($y1, $word[1]);
+				$x2 = max($x2, $word[0] + $word[2]);
+				$y2 = max($y2, $word[1] + $word[3]);
+				$strings[] = $word[4];
+			}
+			$page->items[] = $annotation(++$n, array($x1, $y1, $x2 - $x1, $y2 - $y1), implode(' ', $strings));
+		}
+	}
+
+	return $page;
 }
 
 //----------------------------------------------------------------------------------------
@@ -285,15 +384,15 @@ function add_provenance($manifest, $item)
 
 //----------------------------------------------------------------------------------------
 // A manifest for an item, or null if there is no such item
-function item_manifest($itemid)
+function item_manifest($itemid, $text = 'line')
 {
 	$item = get_item($itemid);
-	return $item ? item_manifest_from($item, $itemid) : null;
+	return $item ? item_manifest_from($item, $itemid, $text) : null;
 }
 
 //----------------------------------------------------------------------------------------
 // A manifest from an item's JSON-LD (from get_item())
-function item_manifest_from($item, $itemid)
+function item_manifest_from($item, $itemid, $text = 'line')
 {
 	$sizes = item_page_sizes($itemid);
 	if (!$sizes)
@@ -304,8 +403,8 @@ function item_manifest_from($item, $itemid)
 	$label = $item->name . (isset($item->volumeNumber) ? ' ' . $item->volumeNumber : '');
 
 	$manifest = new stdclass;
-	$manifest->{'@context'} = IIIF_CONTEXT;
-	$manifest->id       = site_url('iiif.php?item=' . (int)$itemid);
+	$manifest->{'@context'} = array(TEXT_GRANULARITY_CONTEXT, IIIF_CONTEXT);
+	$manifest->id       = site_url('iiif.php?item=' . (int)$itemid . text_param($text));
 	$manifest->type     = 'Manifest';
 	$manifest->label    = iiif_label($label);
 	$manifest->metadata = array(iiif_metadata('Title', $item->name));
@@ -324,6 +423,7 @@ function item_manifest_from($item, $itemid)
 		'label'  => iiif_label($label),
 		'format' => 'text/html',
 	));
+	$manifest->service = array(search_service('item', $itemid));
 	$manifest->seeAlso = array((object)array(
 		'id'      => site_url('api.php?item=' . (int)$itemid),
 		'type'    => 'Dataset',
@@ -342,7 +442,7 @@ function item_manifest_from($item, $itemid)
 		{
 			continue;
 		}
-		$canvas = page_canvas($page, $element->position, $sizes);
+		$canvas = page_canvas($page, $element->position, $sizes, $text);
 		$manifest->items[] = $canvas;
 
 		if (isset($page->isPartOf))
@@ -379,7 +479,7 @@ function item_manifest_from($item, $itemid)
 //----------------------------------------------------------------------------------------
 // A manifest for an article: its pages, from its item's manifest, or null if there is
 // no such article
-function part_manifest($partid)
+function part_manifest($partid, $text = 'line')
 {
 	global $config;
 
@@ -401,7 +501,7 @@ function part_manifest($partid)
 		return null;
 	}
 
-	$item_manifest = item_manifest_from($item, $itemid);
+	$item_manifest = item_manifest_from($item, $itemid, $text);
 
 	$range = null;
 	if (isset($item_manifest->structures))
@@ -437,8 +537,8 @@ function part_manifest($partid)
 	}
 
 	$manifest = new stdclass;
-	$manifest->{'@context'} = IIIF_CONTEXT;
-	$manifest->id       = site_url('iiif.php?part=' . (int)$partid);
+	$manifest->{'@context'} = array(TEXT_GRANULARITY_CONTEXT, IIIF_CONTEXT);
+	$manifest->id       = site_url('iiif.php?part=' . (int)$partid . text_param($text));
 	$manifest->type     = 'Manifest';
 	$manifest->label    = $range->label;
 	$manifest->metadata = array();
@@ -470,6 +570,7 @@ function part_manifest($partid)
 		'format' => 'text/html',
 	));
 	$manifest->partOf = array((object)array('id' => $item_manifest->id, 'type' => 'Manifest'));
+	$manifest->service = array(search_service('part', $partid));
 
 	$manifest->items = array();
 	foreach ($item_manifest->items as $canvas)
@@ -481,6 +582,189 @@ function part_manifest($partid)
 	}
 
 	return $manifest;
+}
+
+//----------------------------------------------------------------------------------------
+// Searching inside an item or article (IIIF Content Search 2.0, served by
+// iiif-search.php). The service's id is a path, iiif-search.php/item/262715, as clients
+// add ?q= to it.
+function search_service($scope, $id)
+{
+	return (object)array(
+		'id'   => site_url('iiif-search.php/' . $scope . '/' . (int)$id),
+		'type' => 'SearchService2',
+	);
+}
+
+//----------------------------------------------------------------------------------------
+// The hits in a page's text, from Elasticsearch's highlighting of the whole text with
+// $pre and $post around each matching word, as [prefix, exact, suffix]. Words of a
+// phrase, matched one by one, become one hit; prefix and suffix are up to about $context
+// characters, ending at a word.
+function text_hits($highlighted, $pre, $post, $context = 50)
+{
+	// Alternately text and a match
+	$pieces = preg_split('/' . preg_quote($pre, '/') . '(.*?)' . preg_quote($post, '/') . '/su',
+		$highlighted, -1, PREG_SPLIT_DELIM_CAPTURE);
+
+	// Join matches with only spaces or punctuation between them
+	for ($i = count($pieces) - 4; $i >= 1; $i -= 2)
+	{
+		if (preg_match('/^[\s\p{P}]{1,3}$/u', $pieces[$i + 1]))
+		{
+			array_splice($pieces, $i, 3, array($pieces[$i] . $pieces[$i + 1] . $pieces[$i + 2]));
+		}
+	}
+
+	$flat = function ($s) {
+		return preg_replace('/\s+/u', ' ', $s);
+	};
+
+	$hits = array();
+	for ($i = 1; $i < count($pieces); $i += 2)
+	{
+		$before = $flat(implode('', array_slice($pieces, 0, $i)));
+		$after  = $flat(implode('', array_slice($pieces, $i + 1)));
+
+		$prefix = mb_substr($before, -$context);
+		if (mb_strlen($before) > $context)
+		{
+			$prefix = preg_replace('/^\S*\s/u', '', $prefix);
+		}
+		$suffix = mb_substr($after, 0, $context);
+		if (mb_strlen($after) > $context)
+		{
+			$suffix = preg_replace('/\s\S*$/u', '', $suffix);
+		}
+
+		$hits[] = array(ltrim($prefix), $flat($pieces[$i]), rtrim($suffix));
+	}
+
+	return $hits;
+}
+
+//----------------------------------------------------------------------------------------
+// The hits for $q in the pages of an item or article ($scope 'item' or 'part'), in page
+// order, as a IIIF Content Search 2.0 AnnotationPage: for each hit, a highlighting
+// annotation of its page (for now the whole canvas; later the hit's words) and, in
+// "annotations", a contextualizing annotation quoting it with its prefix and suffix.
+// $from counts pages with hits, SEARCH_PAGE_SIZE at a time; "next" gives the rest.
+function search_inside($scope, $id, $q, $from = 0)
+{
+	global $config;
+
+	$elastic = new ElasticSearch($config['elastic_options']);
+
+	// Characters that are not in OCR text, to mark the matches
+	$pre  = "\u{E000}";
+	$post = "\u{E001}";
+
+	$query = array(
+		'from' => $from,
+		'size' => SEARCH_PAGE_SIZE,
+		'query' => array(
+			'bool' => array(
+				'filter' => array(
+					array('term' => array('type' => 'page')),
+					array('term' => array($scope == 'part' ? 'partid' : 'itemid' => $scope . '_' . (int)$id)),
+				),
+				// As search_text() in search.php
+				'must' => array(
+					'match' => array('text' => array('query' => $q, 'minimum_should_match' => '3<75%'))
+				),
+			)
+		),
+		'sort' => array(array('seq' => 'asc')),
+		'_source' => array('seq'),
+		'highlight' => array(
+			'pre_tags' => array($pre),
+			'post_tags' => array($post),
+			'fields' => array('text' => array('number_of_fragments' => 0)),
+		),
+	);
+
+	$resp = $elastic->send('POST', '_search', json_encode($query));
+
+	if ($resp[0] != 200)
+	{
+		throw new Exception('Elasticsearch returned HTTP ' . $resp[0]);
+	}
+
+	$base = site_url('iiif-search.php/' . $scope . '/' . (int)$id . '?q=' . rawurlencode($q));
+
+	$page = new stdclass;
+	$page->{'@context'} = SEARCH_CONTEXT;
+	$page->id    = $base . ($from > 0 ? '&from=' . (int)$from : '');
+	$page->type  = 'AnnotationPage';
+	$page->items = array();
+
+	$quotes = array();
+
+	foreach ($resp[1]->hits->hits as $hit)
+	{
+		if (!isset($hit->highlight->text[0]))
+		{
+			continue;
+		}
+		$pageid = id_number($hit->_id);
+		$canvas = page_canvas_id($pageid);
+
+		foreach (text_hits($hit->highlight->text[0], $pre, $post) as $n => $quote)
+		{
+			$hit_id = site_url('iiif/search/' . $pageid . '/' . ($n + 1) . '/hit?q=' . rawurlencode($q));
+
+			$page->items[] = (object)array(
+				'id'         => $hit_id,
+				'type'       => 'Annotation',
+				'motivation' => 'highlighting',
+				'target'     => $canvas,
+			);
+
+			$quotes[] = (object)array(
+				'id'         => str_replace('/hit?', '/context?', $hit_id),
+				'type'       => 'Annotation',
+				'motivation' => 'contextualizing',
+				'target'     => (object)array(
+					'type'     => 'SpecificResource',
+					'source'   => $hit_id,
+					'selector' => array((object)array(
+						'type'   => 'TextQuoteSelector',
+						'prefix' => $quote[0],
+						'exact'  => $quote[1],
+						'suffix' => $quote[2],
+					)),
+				),
+			);
+		}
+	}
+
+	if (count($quotes) > 0)
+	{
+		$page->annotations = array((object)array('type' => 'AnnotationPage', 'items' => $quotes));
+	}
+
+	// Paging, if the hits are on more pages than one response holds
+	$total = $resp[1]->hits->total->value;
+	if ($total > SEARCH_PAGE_SIZE)
+	{
+		$last = (int)(($total - 1) / SEARCH_PAGE_SIZE) * SEARCH_PAGE_SIZE;
+		$page->partOf = array((object)array(
+			'id'    => $base,
+			'type'  => 'AnnotationCollection',
+			'first' => (object)array('id' => $base, 'type' => 'AnnotationPage'),
+			'last'  => (object)array('id' => $base . '&from=' . $last, 'type' => 'AnnotationPage'),
+		));
+		if ($from + SEARCH_PAGE_SIZE < $total)
+		{
+			$page->next = (object)array('id' => $base . '&from=' . ($from + SEARCH_PAGE_SIZE), 'type' => 'AnnotationPage');
+		}
+		if ($from > 0)
+		{
+			$page->prev = (object)array('id' => $base . ($from > SEARCH_PAGE_SIZE ? '&from=' . ($from - SEARCH_PAGE_SIZE) : ''), 'type' => 'AnnotationPage');
+		}
+	}
+
+	return $page;
 }
 
 ?>

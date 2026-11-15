@@ -12,6 +12,8 @@
 	#page= is the page's position in the item (1, 2, ...), as in PDF URLs (RFC 3778);
 	#canvas= (a canvas id, URL-encoded) opens at that canvas instead.
 	The button at the left of the bar shows thumbnails of all pages, to move around fast.
+	If the manifest has a search service (IIIF Content Search 2.0), the button at the
+	right searches inside it; &q= in the URL runs a search when the viewer opens.
 	In an iframe, the viewer tells its parent which page is showing, and the parent can
 	ask it to go to a page (see viewer.js).
 -->
@@ -19,16 +21,26 @@
 </head>
 <body>
 <header class="viewer-bar">
-	<button type="button" id="viewer-thumbs-toggle" class="viewer-thumbs-toggle" aria-controls="viewer-thumbs" aria-expanded="false" title="Thumbnails">
+	<button type="button" id="viewer-thumbs-toggle" class="viewer-toggle" aria-controls="viewer-thumbs" aria-expanded="false" title="Thumbnails">
 		<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
 	</button>
 	<span class="viewer-title" id="viewer-title"></span>
 	<select id="viewer-articles" class="viewer-articles" hidden aria-label="Article"></select>
 	<select id="viewer-pages" class="viewer-pages" aria-label="Page"></select>
+	<button type="button" id="viewer-search-toggle" class="viewer-toggle" aria-controls="viewer-search" aria-expanded="false" title="Search inside" hidden>
+		<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="6.5" cy="6.5" r="4.5" style="fill:none" stroke="currentColor" stroke-width="2"/><path d="M10 10l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+	</button>
 </header>
 <div class="viewer-body">
 	<nav id="viewer-thumbs" class="viewer-thumbs" hidden aria-label="Thumbnails"></nav>
 	<main id="viewer-pages-list" class="viewer-scroll"></main>
+	<aside id="viewer-search" class="viewer-search" hidden aria-label="Search inside">
+		<form id="viewer-search-form" class="viewer-search-form" role="search">
+			<input type="search" id="viewer-search-q" name="q" placeholder="Search inside" aria-label="Search inside" autocomplete="off">
+		</form>
+		<p id="viewer-search-status" class="viewer-search-status" aria-live="polite"></p>
+		<ol id="viewer-search-results" class="viewer-search-results"></ol>
+	</aside>
 </div>
 <script src="viewer.js"></script>
 </body>

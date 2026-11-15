@@ -20,6 +20,7 @@
 	--viewer-bar-border: #d0d0d0;
 	--viewer-page-bg: #f6f6f6;
 	--viewer-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+	--viewer-mark: #fde68a;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -31,6 +32,7 @@
 		--viewer-page-bg: #333333;
 		--viewer-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
 		--viewer-current: #60a5fa;
+		--viewer-mark: #854d0e;
 	}
 }
 
@@ -42,6 +44,7 @@
 	--viewer-page-bg: #333333;
 	--viewer-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
 	--viewer-current: #60a5fa;
+	--viewer-mark: #854d0e;
 }
 
 html, body {
@@ -97,8 +100,8 @@ body {
 	flex: none;
 }
 
-/* Thumbnails toggle */
-.viewer-thumbs-toggle {
+/* Thumbnails and search toggles */
+.viewer-toggle {
 	flex: none;
 	display: flex;
 	align-items: center;
@@ -113,11 +116,15 @@ body {
 	cursor: pointer;
 }
 
-.viewer-thumbs-toggle svg {
+.viewer-toggle[hidden] {
+	display: none;
+}
+
+.viewer-toggle svg {
 	fill: currentColor;
 }
 
-.viewer-thumbs-toggle[aria-expanded="true"] {
+.viewer-toggle[aria-expanded="true"] {
 	color: var(--viewer-bar-bg);
 	background-color: var(--viewer-bar-text);
 	border-color: var(--viewer-bar-text);
@@ -232,6 +239,126 @@ body {
 	-webkit-user-drag: none;
 }
 
+/* Text laid over the image (see draw_text() in viewer.js): invisible, but it can be
+   selected, which shows each word's box */
+.viewer-page {
+	container-type: inline-size;
+}
+
+.viewer-text {
+	position: absolute;
+	inset: 0;
+	user-select: text;
+	-webkit-user-select: text;
+}
+
+.viewer-text span {
+	position: absolute;
+	white-space: pre;
+	line-height: 1;
+	font-family: sans-serif;
+	color: transparent;
+	transform-origin: 0 0;
+	cursor: text;
+}
+
+.viewer-text span::selection {
+	color: transparent;
+	background-color: rgba(37, 99, 235, 0.3);
+}
+
+/* Search inside, beside the pages on the right */
+.viewer-search {
+	flex: none;
+	width: 20em;
+	display: flex;
+	flex-direction: column;
+	box-sizing: border-box;
+	background-color: var(--viewer-bar-bg);
+	border-left: 1px solid var(--viewer-bar-border);
+	min-height: 0;
+}
+
+.viewer-search[hidden] {
+	display: none;
+}
+
+.viewer-search-form {
+	flex: none;
+	padding: 0.75em 0.75em 0 0.75em;
+}
+
+.viewer-search-form input {
+	width: 100%;
+	box-sizing: border-box;
+	font: inherit;
+	color: inherit;
+	background-color: var(--viewer-bar-bg);
+	border: 1px solid var(--viewer-bar-border);
+	border-radius: 4px;
+	padding: 0.35em 0.5em;
+}
+
+.viewer-search-status {
+	flex: none;
+	margin: 0.5em 0.75em;
+	font-size: 0.9em;
+	opacity: 0.75;
+}
+
+.viewer-search-status:empty {
+	display: none;
+}
+
+.viewer-search-results {
+	flex: 1 1 auto;
+	overflow-y: auto;
+	list-style: none;
+	margin: 0;
+	padding: 0 0.75em 0.75em 0.75em;
+}
+
+/* A page with hits: its label, then each hit in its context */
+.viewer-search-page {
+	margin-top: 0.75em;
+}
+
+.viewer-search-page h3 {
+	margin: 0 0 0.25em 0;
+	font-size: 0.85em;
+	font-weight: 600;
+}
+
+.viewer-search-hit {
+	display: block;
+	width: 100%;
+	text-align: left;
+	font: inherit;
+	font-size: 0.9em;
+	line-height: 1.4;
+	color: inherit;
+	background: none;
+	border: none;
+	border-radius: 3px;
+	padding: 0.25em 0.35em;
+	margin: 0 0 0.15em 0;
+	cursor: pointer;
+}
+
+.viewer-search-hit:hover {
+	background-color: var(--viewer-bg);
+}
+
+.viewer-search-hit.current {
+	outline: 2px solid var(--viewer-current);
+}
+
+.viewer-search-hit mark {
+	color: inherit;
+	background-color: var(--viewer-mark);
+	border-radius: 2px;
+}
+
 @media (max-width: 700px) {
 	.viewer-page {
 		width: 100%;
@@ -249,6 +376,14 @@ body {
 		width: auto;
 		z-index: 10;
 		border-right: none;
+	}
+	/* Search covers the pages too */
+	.viewer-search {
+		position: absolute;
+		inset: 0;
+		width: auto;
+		z-index: 10;
+		border-left: none;
 	}
 	/* A long article title must not widen the bar */
 	.viewer-articles {

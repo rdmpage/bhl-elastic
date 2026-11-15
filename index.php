@@ -134,10 +134,10 @@ function container_labels($work)
 //----------------------------------------------------------------------------------------
 // One matching page within a result: small thumbnail, page label, highlighted text.
 // $manifest is the manifest of the page's article or volume, to open the page viewer at
-// this page, or '' to link to BHL.
-function display_result_page($page, $manifest = '')
+// this page, searching inside for $q, or '' to link to BHL.
+function display_result_page($page, $manifest = '', $q = '')
 {
-	$href = $manifest != '' ? viewer_url($manifest, $page->id) : $page->id;
+	$href = $manifest != '' ? viewer_url($manifest, $page->id, $q) : $page->id;
 
 	echo '<div class="page-hit">';
 
@@ -165,8 +165,9 @@ function display_result_page($page, $manifest = '')
 //----------------------------------------------------------------------------------------
 // One result: an article (or a volume, for pages not in an article), then its best
 // pages. $readable is the set of articles we can show in the page viewer (see
-// works_with_manifests() in manifest.php); their matching pages open there too.
-function display_result($work, $readable = array())
+// works_with_manifests() in manifest.php); their matching pages open there too, with
+// the search $q run inside them.
+function display_result($work, $readable = array(), $q = '')
 {
 	$heading = isset($work->name) ? $work->name : $work->id;
 
@@ -178,7 +179,7 @@ function display_result($work, $readable = array())
 	}
 	elseif (isset($readable[$work->id]))
 	{
-		$href = viewer_url(manifest_path($work->id));
+		$href = viewer_url(manifest_path($work->id), '', isset($work->itemListElement) ? $q : '');
 	}
 	else
 	{
@@ -245,7 +246,7 @@ function display_result($work, $readable = array())
 	{
 		foreach ($work->itemListElement as $element)
 		{
-			display_result_page($element->item, isset($readable[$work->id]) ? manifest_path($work->id) : '');
+			display_result_page($element->item, isset($readable[$work->id]) ? manifest_path($work->id) : '', $q);
 		}
 
 		$more = $work->numberOfItems - count($work->itemListElement);
@@ -347,7 +348,7 @@ function display_search($q, $type = 'all', $from = 0)
 
 		foreach ($list->itemListElement as $element)
 		{
-			display_result($element->item, $readable);
+			display_result($element->item, $readable, $type == 'all' ? $q : '');
 		}
 
 		display_pager($q, $type, $from, $size, $list->numberOfItems);
@@ -1019,7 +1020,7 @@ function display_item($itemid)
 	if (isset($item->thumbnailUrl))
 	{
 		$img = '<img class="title-thumbnail" src="' . htmlspecialchars($item->thumbnailUrl) . '" alt="">';
-		echo $readable ? '<a href="' . htmlspecialchars(viewer_url('iiif.php?item=' . (int)$itemid)) . '">' . $img . '</a>' : $img;
+		echo $readable ? '<a href="' . htmlspecialchars(viewer_url(manifest_path($item->id))) . '">' . $img . '</a>' : $img;
 	}
 	echo '<div>';
 	echo '<h1>' . htmlspecialchars($label != '' ? $label : $name) . '</h1>';
@@ -1034,7 +1035,7 @@ function display_item($itemid)
 	}
 	if ($readable)
 	{
-		echo '<p class="hit-meta"><a href="' . htmlspecialchars(viewer_url('iiif.php?item=' . (int)$itemid)) . '">Read this item</a></p>';
+		echo '<p class="hit-meta"><a href="' . htmlspecialchars(viewer_url(manifest_path($item->id))) . '">Read this item</a></p>';
 	}
 	echo '</div>';
 	echo '</div>';
@@ -1144,7 +1145,7 @@ function display_item($itemid)
 			list($classes, $style, $parts) = $page_style($page);
 			$text = $tooltip($page, $parts);
 
-			echo '<a class="coverage-page ' . implode(' ', $classes) . '" style="' . $style . '" data-parts="' . htmlspecialchars(implode(' ', $parts)) . '" href="' . htmlspecialchars($readable ? viewer_url('iiif.php?item=' . (int)$itemid, $page->id) : $page->id) . '" title="' . htmlspecialchars($text) . '">';
+			echo '<a class="coverage-page ' . implode(' ', $classes) . '" style="' . $style . '" data-parts="' . htmlspecialchars(implode(' ', $parts)) . '" href="' . htmlspecialchars($readable ? viewer_url(manifest_path($item->id), $page->id) : $page->id) . '" title="' . htmlspecialchars($text) . '">';
 			echo '<span class="coverage-image">';
 			if (isset($page->thumbnailUrl))
 			{
@@ -1185,7 +1186,7 @@ function display_item($itemid)
 			echo '<p class="hit-meta">' . htmlspecialchars(implode(' · ', $meta));
 			if ($readable)
 			{
-				echo ' · <a href="' . htmlspecialchars(viewer_url('iiif.php?part=' . url_number($part->id))) . '">Read</a>';
+				echo ' · <a href="' . htmlspecialchars(viewer_url(manifest_path($part->id))) . '">Read</a>';
 			}
 			echo '</p>';
 			echo '</div>';
@@ -1197,7 +1198,7 @@ function display_item($itemid)
 	echo '<p class="results-summary">';
 	if ($readable)
 	{
-		echo '<a href="' . htmlspecialchars(viewer_url('iiif.php?item=' . (int)$itemid)) . '">Read</a> · ';
+		echo '<a href="' . htmlspecialchars(viewer_url(manifest_path($item->id))) . '">Read</a> · ';
 		echo '<a href="iiif.php?item=' . (int)$itemid . '">IIIF manifest</a> · ';
 	}
 	echo '<a href="api.php?item=' . (int)$itemid . '">JSON-LD</a></p>';
