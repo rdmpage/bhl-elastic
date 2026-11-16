@@ -219,29 +219,117 @@ function get_item($itemid)
 
 	foreach ($hits['page'] as $hit)
 	{
-		$page = new stdclass;
-		$page->id   = 'https://www.biodiversitylibrary.org/page/' . id_number($hit->_id);
-		$page->type = 'CreativeWork';
+		$work->itemListElement[] = page_list_element($hit, count($work->itemListElement) + 1);
+	}
 
-		if (isset($hit->_source->name))      { $page->name = $hit->_source->name; }
-		if (isset($hit->_source->thumbnail)) { $page->thumbnailUrl = $hit->_source->thumbnail; }
-		if (isset($hit->_source->tags))      { $page->genre = $hit->_source->tags; }
+	return $work;
+}
 
-		if (isset($hit->_source->partid))
+//----------------------------------------------------------------------------------------
+// A page search hit as a ListItem of an item or article: the page is a CreativeWork
+// named by its printed page label, its genre the page types BHL gives it, and isPartOf
+// the articles it is in, if any. Its position is the page's sequence number in the
+// item, or $position if it has none.
+function page_list_element($hit, $position)
+{
+	$page = new stdclass;
+	$page->id   = 'https://www.biodiversitylibrary.org/page/' . id_number($hit->_id);
+	$page->type = 'CreativeWork';
+
+	if (isset($hit->_source->name))      { $page->name = $hit->_source->name; }
+	if (isset($hit->_source->thumbnail)) { $page->thumbnailUrl = $hit->_source->thumbnail; }
+	if (isset($hit->_source->tags))      { $page->genre = $hit->_source->tags; }
+
+	if (isset($hit->_source->partid))
+	{
+		$page->isPartOf = array();
+		foreach ($hit->_source->partid as $partid)
 		{
-			$page->isPartOf = array();
-			foreach ($hit->_source->partid as $partid)
-			{
-				$page->isPartOf[] = (object)array('id' => 'https://www.biodiversitylibrary.org/part/' . id_number($partid));
-			}
+			$page->isPartOf[] = (object)array('id' => 'https://www.biodiversitylibrary.org/part/' . id_number($partid));
 		}
+	}
 
-		$element = new stdclass;
-		$element->type = 'ListItem';
-		$element->position = isset($hit->_source->seq) ? $hit->_source->seq : count($work->itemListElement) + 1;
-		$element->item = $page;
+	$element = new stdclass;
+	$element->type = 'ListItem';
+	$element->position = isset($hit->_source->seq) ? $hit->_source->seq : $position;
+	$element->item = $page;
 
-		$work->itemListElement[] = $element;
+	return $element;
+}
+
+//----------------------------------------------------------------------------------------
+// A part (an article, chapter...) and its pages, as JSON-LD, or null if there is no such
+// part. $partid is BHL's number, e.g. 431953.
+//
+// The part is built by part_to_jsonld() in search.php: a ScholarlyArticle (or Chapter,
+// or CreativeWork) whose isPartOf is the journal, volume and issue it was published in.
+// The scanned item (PublicationVolume) that holds it is added to isPartOf, so the
+// article is also in the item's hasPart (see get_item()). Its pages are an ItemList,
+// in scan order, as for an item.
+//
+// Room for more: works it cites (citation), works citing it, places and taxa it
+// mentions.
+function get_part($partid)
+{
+	global $config;
+
+	$elastic = new ElasticSearch($config['elastic_options']);
+
+	$id = 'part_' . (int)$partid;
+
+	$docs = fetch_docs($elastic, array($id), array('itemid', 'titleid', 'seq', 'name', 'authors', 'container', 'tags', 'volume', 'issue', 'year', 'pages', 'doi', 'thumbnail'));
+
+	if (!isset($docs[$id]))
+	{
+		return null;
+	}
+
+	$part     = $docs[$id];
+	$titleids = isset($part->titleid) ? $part->titleid : array();
+	$itemid   = isset($part->itemid) ? $part->itemid : null;
+
+	// The item and the titles, for names
+	$others = fetch_docs($elastic, array_merge($titleids, $itemid ? array($itemid) : array()), array('titleid', 'volume', 'year', 'name'));
+
+	$work = part_to_jsonld($id, $part, $titleids, $others);
+	$work = (object)array_merge(array('@context' => create_context()), (array)$work);
+
+	if ($itemid && isset($others[$itemid]))
+	{
+		$item = $others[$itemid];
+		$item_titleids = isset($item->titleid) ? $item->titleid : $titleids;
+		$work->isPartOf = array($work->isPartOf, item_to_jsonld($itemid, $item, $item_titleids, $others));
+	}
+
+	// Pages, in scan order
+	$query = array(
+		'size' => 10000,
+		'query' => array(
+			'bool' => array(
+				'filter' => array(
+					array('term' => array('type' => 'page')),
+					array('term' => array('partid' => $id)),
+				)
+			)
+		),
+		'_source' => array('seq', 'name', 'tags', 'thumbnail', 'partid'),
+		'sort' => array(array('seq' => array('order' => 'asc', 'missing' => '_last'))),
+	);
+
+	$resp = $elastic->send('POST', '_search', json_encode($query));
+
+	if ($resp[0] != 200)
+	{
+		throw new Exception('Search failed (HTTP ' . $resp[0] . ')');
+	}
+
+	$work->type = array($work->type, 'ItemList');
+	$work->numberOfItems = count($resp[1]->hits->hits);
+	$work->itemListElement = array();
+
+	foreach ($resp[1]->hits->hits as $hit)
+	{
+		$work->itemListElement[] = page_list_element($hit, count($work->itemListElement) + 1);
 	}
 
 	return $work;

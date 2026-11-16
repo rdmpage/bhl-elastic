@@ -10,6 +10,7 @@
 //                                       are decade, kind, language, library, subject)
 //   api.php?title=9243                  (a title and its items)
 //   api.php?item=222763                 (an item, its articles and its pages)
+//   api.php?part=431953                 (an article and its pages)
 
 error_reporting(E_ALL);
 
@@ -53,6 +54,20 @@ function main()
 		{
 			$item = get_item((int)$_GET['item']);
 			$item ? send_json(200, $item) : send_json(404, array('error' => 'No such item'));
+		}
+		catch (Exception $e)
+		{
+			send_json(502, array('error' => $e->getMessage()));
+		}
+		return;
+	}
+
+	if (isset($_GET['part']))
+	{
+		try
+		{
+			$part = get_part((int)$_GET['part']);
+			$part ? send_json(200, $part) : send_json(404, array('error' => 'No such part'));
 		}
 		catch (Exception $e)
 		{

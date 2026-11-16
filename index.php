@@ -219,7 +219,7 @@ function format_volume($volume)
 }
 
 //----------------------------------------------------------------------------------------
-// Our page for a BHL title or item URI, or null for anything else.
+// Our page for a BHL title, item or part URI, or null for anything else.
 function local_page_url($id)
 {
 	if (preg_match('/^https:\/\/www.biodiversitylibrary.org\/bibliography\/(\d+)$/', $id, $m))
@@ -229,6 +229,10 @@ function local_page_url($id)
 	if (preg_match('/^https:\/\/www.biodiversitylibrary.org\/item\/(\d+)$/', $id, $m))
 	{
 		return '?item=' . $m[1];
+	}
+	if (preg_match('/^https:\/\/www.biodiversitylibrary.org\/part\/(\d+)$/', $id, $m))
+	{
+		return '?part=' . $m[1];
 	}
 	return null;
 }
@@ -1341,7 +1345,6 @@ function display_item($itemid)
 	echo '<p class="results-summary">';
 	if ($readable)
 	{
-		echo '<a href="' . htmlspecialchars(viewer_url(manifest_path($item->id))) . '">Read</a> · ';
 		echo '<a href="iiif.php?item=' . (int)$itemid . '">IIIF manifest</a> · ';
 	}
 	echo '<a href="api.php?item=' . (int)$itemid . '">JSON-LD</a></p>';
@@ -1366,6 +1369,145 @@ function display_item($itemid)
 	</script>';
 
 	display_html_end();
+}
+
+//----------------------------------------------------------------------------------------
+// A part (an article, chapter...): its citation, where it was published and the item it
+// was scanned in, then its pages, each opening the page viewer at that page. Rendered
+// from get_part()'s JSON-LD.
+function display_part($partid)
+{
+	global $config;
+
+	$part = get_part($partid);
+
+	if (!$part)
+	{
+		default_display('No article ' . htmlspecialchars($partid) . ' in this index');
+		return;
+	}
+
+	$name = isset($part->name) ? $part->name : $part->id;
+
+	// isPartOf is where it was published, then the scanned item that holds it
+	$published = null;
+	$item      = null;
+	foreach (is_array($part->isPartOf) ? $part->isPartOf : array($part->isPartOf) as $container)
+	{
+		if (isset($container->id) && preg_match('/\/item\/\d+$/', $container->id))
+		{
+			$item = $container;
+		}
+		elseif (!$published)
+		{
+			$published = $container;
+		}
+	}
+
+	$readable = works_with_manifests(array($part->id));
+	$viewer   = isset($readable[$part->id]) ? viewer_url(manifest_path($part->id)) : '';
+
+	display_html_start($name . ' - ' . $config['site_name'], $part);
+	display_navbar('');
+	display_main_start();
+
+	echo '<div class="results">';
+
+	echo '<div class="title-header">';
+	if (isset($part->thumbnailUrl))
+	{
+		$img = '<img class="title-thumbnail" src="' . htmlspecialchars($part->thumbnailUrl) . '" alt="">';
+		echo $viewer ? '<a href="' . htmlspecialchars($viewer) . '">' . $img . '</a>' : $img;
+	}
+	echo '<div>';
+	echo '<h1>' . htmlspecialchars($name) . '</h1>';
+	if (isset($part->author))
+	{
+		$names = array();
+		foreach ($part->author as $author)
+		{
+			$names[] = $author->name;
+		}
+		echo '<p class="group-authors">' . htmlspecialchars(implode('; ', $names)) . '</p>';
+	}
+	if ($published)
+	{
+		$labels = container_labels((object)array('isPartOf' => $published));
+		if (isset($part->datePublished)) { $labels[] = array($part->datePublished, null); }
+		if (isset($part->pagination))    { $labels[] = array('pp. ' . $part->pagination, null); }
+		echo '<p class="hit-meta">' . display_labels($labels) . '</p>';
+	}
+	if ($viewer)
+	{
+		echo '<p class="hit-meta"><a href="' . htmlspecialchars($viewer) . '">Read this article</a></p>';
+	}
+	echo '</div>';
+	echo '</div>';
+
+	$types = is_array($part->type) ? $part->type : array($part->type);
+	$kind  = array('ScholarlyArticle' => 'Article', 'Chapter' => 'Chapter');
+
+	$doi = '';
+	if (isset($part->sameAs) && preg_match('/^https:\/\/doi.org\/(.*)$/', $part->sameAs, $m))
+	{
+		$doi = '<a href="' . htmlspecialchars($part->sameAs) . '">' . htmlspecialchars($m[1]) . '</a>';
+	}
+
+	$item_link = '';
+	if ($item)
+	{
+		$label = trim((isset($item->name) ? $item->name : '') . ' ' . (isset($item->volumeNumber) ? format_volume($item->volumeNumber) : ''));
+		$item_link = '<a href="' . htmlspecialchars(local_page_url($item->id)) . '">' . htmlspecialchars($label != '' ? $label : $item->id) . '</a>';
+	}
+
+	echo '<dl class="title-summary">';
+	display_summary_row('Type', isset($kind[$types[0]]) ? $kind[$types[0]] : 'Other');
+	display_summary_row('Year', isset($part->datePublished) ? htmlspecialchars($part->datePublished) : '');
+	display_summary_row('Pages', isset($part->pagination) ? htmlspecialchars($part->pagination) : '');
+	display_summary_row('DOI', $doi);
+	display_summary_row('Scanned in', $item_link);
+	display_summary_row('Scans', number_format($part->numberOfItems) . ' page' . ($part->numberOfItems == 1 ? '' : 's'));
+	display_summary_row('BHL', '<a href="' . htmlspecialchars($part->id) . '">' . htmlspecialchars($part->id) . '</a>');
+	echo '</dl>';
+
+	if ($part->numberOfItems > 0)
+	{
+		echo '<h2>Pages</h2>';
+		echo '<div class="coverage-pages">';
+		foreach ($part->itemListElement as $element)
+		{
+			$page = $element->item;
+			$text = isset($page->name) ? $page->name : $page->id;
+			if (isset($page->genre))
+			{
+				$text .= ' · ' . implode(', ', $page->genre);
+			}
+			$classes = isset($page->genre) && in_array('Illustration', $page->genre) ? ' coverage-plate' : '';
+
+			echo '<a class="coverage-page' . $classes . '" href="' . htmlspecialchars($viewer ? viewer_url(manifest_path($part->id), $page->id) : $page->id) . '" title="' . htmlspecialchars($text) . '">';
+			echo '<span class="coverage-image">';
+			if (isset($page->thumbnailUrl))
+			{
+				echo '<img loading="lazy" src="' . htmlspecialchars($page->thumbnailUrl) . '" alt="">';
+			}
+			echo '</span>';
+			$short = isset($page->name) ? preg_replace(array('/^Page /', '/^.*, /'), '', $page->name) : $element->position;
+			echo '<span class="coverage-label">' . htmlspecialchars($short) . '</span>';
+			echo '</a>';
+		}
+		echo '</div>';
+	}
+
+	echo '<p class="results-summary">';
+	if ($viewer)
+	{
+		echo '<a href="iiif.php?part=' . (int)$partid . '">IIIF manifest</a> · ';
+	}
+	echo '<a href="api.php?part=' . (int)$partid . '">JSON-LD</a></p>';
+
+	echo '</div>';
+
+	display_main_end();
 }
 
 //----------------------------------------------------------------------------------------
@@ -1403,12 +1545,10 @@ function main()
 		exit(0);
 	}
 
-	// Show an article: in the page viewer if we can, otherwise at BHL
+	// Show an article
 	if (isset($_GET['part']))
 	{
-		$url = 'https://www.biodiversitylibrary.org/part/' . (int)$_GET['part'];
-		$readable = works_with_manifests(array($url));
-		header('Location: ' . (isset($readable[$url]) ? viewer_url(manifest_path($url)) : $url));
+		display_part((int)$_GET['part']);
 		exit(0);
 	}
 
