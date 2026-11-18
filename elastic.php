@@ -26,6 +26,16 @@ class ElasticSearch
 	// it starts with "/", in which case it is relative to the server.
 	function send($method, $path = '', $post_data = null, $content_type = 'application/json')
 	{
+		list($http_code, $response) = $this->send_raw($method, $path, $post_data, $content_type);
+
+		return array($http_code, json_decode($response));
+	}
+
+	//------------------------------------------------------------------------------------
+	// As send(), but the response as it comes (e.g. a binary vector tile), as
+	// array(http_code, body, content type)
+	function send_raw($method, $path = '', $post_data = null, $content_type = 'application/json')
+	{
 		$url = rtrim($this->url, '/');
 
 		if (substr($path, 0, 1) == '/')
@@ -58,6 +68,7 @@ class ElasticSearch
 
 		$response  = curl_exec($ch);
 		$http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+		$type      = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
 
 		if (curl_errno($ch) != 0)
 		{
@@ -66,7 +77,7 @@ class ElasticSearch
 
 		curl_close($ch);
 
-		return array($http_code, json_decode($response));
+		return array($http_code, $response, $type);
 	}
 
 	//------------------------------------------------------------------------------------

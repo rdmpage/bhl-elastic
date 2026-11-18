@@ -1525,10 +1525,10 @@ function display_part($partid)
 }
 
 //----------------------------------------------------------------------------------------
-// The map: every latitude and longitude pair found in page text (see geotag.php),
-// counted in squares that get finer as you zoom in (api.php?type=map), beside the
-// articles and volumes with points in view (display_map_results(), fetched as the map
-// moves). $q limits both to pages with those words. Where the map is goes in the URL's
+// The map: every latitude and longitude pair found in page text (see geotag.php), as
+// points from vector tiles (tile.php), drawn with MapLibre, beside the articles and
+// volumes with points in view (display_map_results(), fetched as the map moves), or
+// near a point that is clicked. $q limits both to pages with those words. Where the map is goes in the URL's
 // hash, #zoom/lat/lon, so a view can be linked to.
 function display_map($q)
 {
@@ -1539,125 +1539,170 @@ function display_map($q)
 	display_main_start();
 
 	echo '<div class="map-layout">';
-	echo '<div class="map-pane" id="site-map" role="region" aria-label="Map of points in the text"></div>';
+	echo '<div class="map-pane">';
+	echo '<div id="site-map" role="region" aria-label="Map of points in the text"></div>';
+	echo '<div class="map-legend" aria-hidden="true">Pages'
+		. '<span><i style="background:#059669"></i>1</span>'
+		. '<span><i style="background:#047857"></i>2–4</span>'
+		. '<span><i style="background:#065f46"></i>5–19</span>'
+		. '<span><i style="background:#064e3b"></i>20+</span></div>';
+	echo '</div>';
 	echo '<aside class="map-side">';
 	echo '<form class="map-filter" method="get" action="index.php">';
 	echo '<input type="hidden" name="map" value="1">';
 	echo '<input type="search" name="q" value="' . htmlspecialchars($q) . '" placeholder="Only pages with these words, e.g. Gulella" aria-label="Only pages with these words">';
 	echo '<button type="submit">Filter</button>';
 	echo '</form>';
-	echo '<p class="hit-meta">Latitude and longitude pairs found in the text of ' . htmlspecialchars($config['site_name']) . '. Click a number to zoom in.</p>';
+	echo '<p class="hit-meta">Every latitude and longitude pair found in the text of ' . htmlspecialchars($config['site_name']) . '. Click a point to list its pages.</p>';
 	echo '<div class="map-results" aria-live="polite"><p class="results-summary">Loading…</p></div>';
 	echo '<noscript><p>The map needs JavaScript.</p></noscript>';
 	echo '</aside>';
 	echo '</div>';
 
-	echo '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">';
-	echo '<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>';
+	echo '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/5.24.0/maplibre-gl.css">';
+	echo '<script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/5.24.0/maplibre-gl.js"></script>';
 	echo '<script>var map_query = ' . json_encode($q, JSON_HEX_TAG | JSON_UNESCAPED_UNICODE) . ';</script>';
 
 	echo <<<'JS'
 <script>
 (function () {
 	var results = document.querySelector(".map-results");
-	var map = L.map("site-map", { worldCopyJump: true, minZoom: 1 });
-	L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-		maxZoom: 18,
-		attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-	}).addTo(map);
 
-	var markers = L.layerGroup().addTo(map);
-	var run = 0;
-	var timer = null;
+	// Points come as vector tiles (tile.php, from Elasticsearch), one point per small
+	// fixed cell with _count pages, so every point shows and none move as the map moves
+	var tiles = new URL("tile.php", document.baseURI).href + "?z={z}&x={x}&y={y}"
+		+ (map_query ? "&q=" + encodeURIComponent(map_query) : "");
 
-	// Where to start: the hash, or the world
-	var m = location.hash.match(/^#(\d+)\/(-?[\d.]+)\/(-?[\d.]+)$/);
+	// Where to start: the hash (#zoom/lat/lon), or the world
+	var center = [20, 15];
+	var zoom = 1.5;
+	var m = location.hash.match(/^#([\d.]+)\/(-?[\d.]+)\/(-?[\d.]+)$/);
 	if (m) {
-		map.setView([parseFloat(m[2]), parseFloat(m[3])], parseInt(m[1], 10));
-	} else {
-		map.setView([15, 20], 2);
+		zoom = parseFloat(m[1]);
+		center = [parseFloat(m[3]), parseFloat(m[2])];
 	}
 
-	function params(extra) {
-		var b = map.getBounds();
-		var p = new URLSearchParams({
-			bbox: [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()].map(function (v) { return v.toFixed(5); }).join(","),
-			q: map_query
-		});
-		Object.keys(extra || {}).forEach(function (k) { p.set(k, extra[k]); });
-		return p.toString();
+	// Darker for more pages (one hue, so it reads as "more", not as a category)
+	var count = ["get", "_count"];
+	var map = new maplibregl.Map({
+		container: "site-map",
+		center: center,
+		zoom: zoom,
+		maxZoom: 18,
+		style: {
+			version: 8,
+			sources: {
+				osm: {
+					type: "raster",
+					tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+					tileSize: 256,
+					maxzoom: 19,
+					attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+				},
+				points: { type: "vector", tiles: [tiles], maxzoom: 14 }
+			},
+			layers: [
+				{ id: "osm", type: "raster", source: "osm" },
+				{
+					id: "points",
+					type: "circle",
+					source: "points",
+					"source-layer": "aggs",
+					paint: {
+						"circle-color": ["step", count, "#059669", 2, "#047857", 5, "#065f46", 20, "#064e3b"],
+						"circle-radius": ["interpolate", ["linear"], ["zoom"],
+							0, ["step", count, 2.5, 5, 3, 20, 3.5],
+							4, ["step", count, 3.5, 5, 4, 20, 5],
+							8, ["step", count, 5, 5, 6, 20, 7],
+							12, ["step", count, 6, 5, 7, 20, 8]],
+						"circle-stroke-color": "#ffffff",
+						"circle-stroke-width": ["interpolate", ["linear"], ["zoom"], 0, 0.5, 4, 1, 8, 1.5]
+					}
+				}
+			]
+		}
+	});
+	map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-left");
+
+	function format(lat, lon) {
+		return Math.abs(lat).toFixed(3) + "° " + (lat < 0 ? "S" : "N") + ", "
+			+ Math.abs(lon).toFixed(3) + "° " + (lon < 0 ? "W" : "E");
 	}
 
-	// A map tile's bounds from its z/x/y
-	function tile_bounds(key) {
-		var t = key.split("/").map(Number);
-		var n = Math.pow(2, t[0]);
-		var lat = function (y) { return Math.atan(Math.sinh(Math.PI * (1 - 2 * y / n))) * 180 / Math.PI; };
-		return L.latLngBounds([lat(t[2] + 1), t[1] / n * 360 - 180], [lat(t[2]), (t[1] + 1) / n * 360 - 180]);
-	}
+	// The list beside the map: what has points in an area (west, south, east, north)
+	var list_bbox = null;
+	var list_near = null;
+	var run = 0;
 
-	function draw(collection) {
-		markers.clearLayers();
-		collection.features.forEach(function (f) {
-			var count = f.properties.count;
-			var latlng = [f.geometry.coordinates[1], f.geometry.coordinates[0]];
-			var size = Math.round(18 + 7 * Math.log10(count));
-			var marker = L.marker(latlng, {
-				icon: L.divIcon({
-					className: "map-count",
-					html: "<span>" + (count > 1 ? count.toLocaleString() : "") + "</span>",
-					iconSize: count > 1 ? [size, size] : [12, 12]
-				}),
-				title: count.toLocaleString() + " page" + (count === 1 ? "" : "s"),
-				alt: count.toLocaleString() + " page" + (count === 1 ? "" : "s")
-			});
-			marker.on("click", function () {
-				map.fitBounds(tile_bounds(f.properties.tile), { maxZoom: 16 });
-			});
-			markers.addLayer(marker);
-		});
-	}
-
-	function list(from) {
-		var mine = run;
-		fetch("index.php?map=1&fragment=1&" + params({ from: from }))
+	function list(bbox, from, near) {
+		var mine = ++run;
+		list_bbox = bbox;
+		list_near = near || null;
+		var p = new URLSearchParams({ map: 1, fragment: 1, bbox: bbox.map(function (v) { return v.toFixed(5); }).join(","), q: map_query, from: from || 0 });
+		if (near) {
+			p.set("near", 1);
+		}
+		fetch("index.php?" + p.toString())
 			.then(function (r) { return r.text(); })
 			.then(function (html) {
-				if (mine === run) {
-					results.innerHTML = html;
-					results.scrollTop = 0;
+				if (mine !== run) {
+					return;
 				}
+				var head = near
+					? '<p class="map-near">Near ' + format(near.lat, near.lng)
+						+ ' <button type="button" data-reset>Everything in view</button></p>'
+					: "";
+				results.innerHTML = head + html;
+				results.scrollTop = 0;
 			});
 	}
 
-	function update() {
-		var mine = ++run;
-		var c = map.getCenter();
-		history.replaceState(null, "", "#" + map.getZoom() + "/" + c.lat.toFixed(4) + "/" + c.lng.toFixed(4));
-		fetch("api.php?type=map&zoom=" + map.getZoom() + "&" + params())
-			.then(function (r) { return r.json(); })
-			.then(function (collection) {
-				if (mine === run) {
-					draw(collection);
-				}
-			});
-		list(0);
+	function view_bbox() {
+		var b = map.getBounds();
+		return [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
 	}
 
+	var timer = null;
 	map.on("moveend", function () {
+		var c = map.getCenter();
+		history.replaceState(null, "", "#" + map.getZoom().toFixed(2) + "/" + c.lat.toFixed(4) + "/" + c.lng.toFixed(4));
 		clearTimeout(timer);
-		timer = setTimeout(update, 250);
+		timer = setTimeout(function () { list(view_bbox(), 0); }, 250);
 	});
 
-	// More results, without leaving the map
+	// A point: how many pages on hover; click to list them (and any just beside it)
+	var tip = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 8 });
+	map.on("mousemove", "points", function (e) {
+		map.getCanvas().style.cursor = "pointer";
+		var f = e.features[0];
+		var n = f.properties._count;
+		tip.setLngLat(f.geometry.coordinates).setText(n.toLocaleString() + " page" + (n === 1 ? "" : "s")).addTo(map);
+	});
+	map.on("mouseleave", "points", function () {
+		map.getCanvas().style.cursor = "";
+		tip.remove();
+	});
+	map.on("click", "points", function (e) {
+		var r = 6;
+		var sw = map.unproject([e.point.x - r, e.point.y + r]);
+		var ne = map.unproject([e.point.x + r, e.point.y - r]);
+		list([sw.lng, sw.lat, ne.lng, ne.lat], 0, e.lngLat);
+	});
+
 	results.addEventListener("click", function (event) {
+		if (event.target.closest("button[data-reset]")) {
+			list(view_bbox(), 0);
+			return;
+		}
 		var button = event.target.closest("button[data-from]");
 		if (button) {
-			list(parseInt(button.dataset.from, 10));
+			list(list_bbox, parseInt(button.dataset.from, 10), list_near);
 		}
 	});
 
-	update();
+	// The list for where the map starts (not waiting for "load", which waits for every
+	// base map tile)
+	list(view_bbox(), 0);
 })();
 </script>
 JS;
@@ -1668,8 +1713,9 @@ JS;
 
 //----------------------------------------------------------------------------------------
 // The articles and volumes with points in an area, for the side of the map, as an HTML
-// fragment (from search_text()'s JSON-LD, as api.php?bbox= gives), with buttons for more
-function display_map_results($q, $bbox, $from)
+// fragment (from search_text()'s JSON-LD, as api.php?bbox= gives), with buttons for more.
+// $near: the area is round a point that was clicked, not the map's view.
+function display_map_results($q, $bbox, $from, $near = false)
 {
 	$size = 20;
 
@@ -1692,7 +1738,7 @@ function display_map_results($q, $bbox, $from)
 	$count = count($list->itemListElement);
 	$n     = $list->numberOfItems;
 
-	echo '<p class="results-summary">' . number_format($n) . ' article' . ($n == 1 ? '' : 's') . ' or volume' . ($n == 1 ? '' : 's') . ' with points in view';
+	echo '<p class="results-summary">' . number_format($n) . ' article' . ($n == 1 ? '' : 's') . ' or volume' . ($n == 1 ? '' : 's') . ' with points ' . ($near ? 'here' : 'in view');
 	if ($count > 0)
 	{
 		echo ', showing ' . number_format($from + 1) . '–' . number_format($from + $count);
@@ -1967,7 +2013,7 @@ function main()
 		if (isset($_GET['fragment']))
 		{
 			$from = isset($_GET['from']) ? max(0, (int)$_GET['from']) : 0;
-			display_map_results($query, isset($_GET['bbox']) ? parse_bbox($_GET['bbox']) : null, $from);
+			display_map_results($query, isset($_GET['bbox']) ? parse_bbox($_GET['bbox']) : null, $from, isset($_GET['near']));
 		}
 		else
 		{

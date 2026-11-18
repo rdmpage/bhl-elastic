@@ -721,8 +721,64 @@
 }
 
 .map-pane {
+	position: relative;
 	height: 100%;
 	background-color: var(--thumbnail-bg);
+}
+
+#site-map {
+	position: absolute;
+	inset: 0;
+}
+
+/* what the shades of the points mean */
+.map-legend {
+	position: absolute;
+	left: 10px;
+	bottom: 26px;
+	display: flex;
+	gap: 0.7em;
+	align-items: center;
+	padding: 0.3em 0.6em;
+	border-radius: 4px;
+	background-color: rgba(255, 255, 255, 0.9);
+	color: #333;
+	font-size: 0.75em;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.map-legend span {
+	display: inline-flex;
+	gap: 0.3em;
+	align-items: center;
+}
+
+.map-legend i {
+	display: inline-block;
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	border: 1.5px solid #fff;
+	box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.3);
+}
+
+.map-near {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5em;
+	align-items: center;
+	margin: 0.8em 0 0 0;
+	font-size: 0.9em;
+}
+
+.map-near button {
+	font: inherit;
+	padding: 0.2em 0.6em;
+	border: 1px solid var(--border-color);
+	border-radius: 4px;
+	background-color: var(--bg);
+	color: var(--text);
+	cursor: pointer;
 }
 
 .map-side {
@@ -756,26 +812,6 @@
 	background-color: var(--bg);
 	color: var(--text);
 	cursor: pointer;
-}
-
-/* a count of pages, sized by how many; the number is centred in its own span, as
-   Leaflet's stylesheet (loaded later) makes the marker itself display: block */
-.map-count {
-	border-radius: 50%;
-	background-color: rgba(5, 150, 105, 0.85);
-	border: 2px solid #fff;
-	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
-	color: #fff;
-	font: 600 11px/1 sans-serif;
-	box-sizing: border-box;
-}
-
-.map-count span {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 100%;
-	height: 100%;
 }
 
 @media (max-width: 800px) {
