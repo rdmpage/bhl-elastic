@@ -1468,6 +1468,8 @@ function display_part($partid)
 	display_summary_row('BHL', '<a href="' . htmlspecialchars($part->id) . '">' . htmlspecialchars($part->id) . '</a>');
 	echo '</dl>';
 
+	display_part_map($part, $viewer);
+
 	display_cite($partid);
 
 	if ($part->numberOfItems > 0)
@@ -1508,6 +1510,94 @@ function display_part($partid)
 	echo '</div>';
 
 	display_main_end();
+}
+
+//----------------------------------------------------------------------------------------
+// A map of the points (latitude and longitude pairs) in a part's text, from its pages'
+// spatialCoverage; each point lists the pages it is on, opening the page viewer at that
+// page ($viewer is the viewer's URL, or '' to link to BHL). Nothing if it has none.
+function display_part_map($part, $viewer)
+{
+	$points = array();
+	foreach ($part->itemListElement as $element)
+	{
+		$page = $element->item;
+		if (!isset($page->spatialCoverage))
+		{
+			continue;
+		}
+		$href = $viewer ? viewer_url(manifest_path($part->id), $page->id) : $page->id;
+		foreach ($page->spatialCoverage as $place)
+		{
+			$key = $place->geo->latitude . ',' . $place->geo->longitude;
+			if (!isset($points[$key]))
+			{
+				$points[$key] = array('lat' => $place->geo->latitude, 'lon' => $place->geo->longitude, 'pages' => array());
+			}
+			$points[$key]['pages'][$page->id] = array(isset($page->name) ? $page->name : $page->id, $href);
+		}
+	}
+
+	if (count($points) == 0)
+	{
+		return;
+	}
+
+	$data = array();
+	foreach ($points as $point)
+	{
+		$point['pages'] = array_values($point['pages']);
+		$data[] = $point;
+	}
+
+	echo '<h2>Map</h2>';
+	echo '<p class="hit-meta">' . number_format(count($data)) . ' point' . (count($data) == 1 ? '' : 's') . ' (latitude and longitude) found in the text.</p>';
+	echo '<div class="part-map" role="region" aria-label="Map of points in the text"></div>';
+	echo '<script type="application/json" id="part-map-data">' . json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) . '</script>';
+	echo '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">';
+	echo '<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>';
+
+	echo <<<'JS'
+<script>
+(function () {
+	var el = document.querySelector(".part-map");
+	if (!window.L || !el) {
+		return;
+	}
+	var points = JSON.parse(document.getElementById("part-map-data").textContent);
+
+	var map = L.map(el, { scrollWheelZoom: false });
+	L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+		maxZoom: 18,
+		attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+	}).addTo(map);
+
+	function format(lat, lon) {
+		return Math.abs(lat).toFixed(4) + "° " + (lat < 0 ? "S" : "N") + ", "
+			+ Math.abs(lon).toFixed(4) + "° " + (lon < 0 ? "W" : "E");
+	}
+
+	function escape(s) {
+		var div = document.createElement("div");
+		div.textContent = s;
+		return div.innerHTML;
+	}
+
+	var bounds = [];
+	points.forEach(function (p) {
+		var links = p.pages.map(function (page) {
+			return '<a href="' + escape(page[1]) + '">' + escape(page[0]) + "</a>";
+		});
+		L.circleMarker([p.lat, p.lon], {
+			radius: 6, weight: 2, color: "#ffffff", fillColor: "#059669", fillOpacity: 0.9
+		}).bindPopup(format(p.lat, p.lon) + "<br>" + links.join(", ")).addTo(map);
+		bounds.push([p.lat, p.lon]);
+	});
+
+	map.fitBounds(bounds, { padding: [24, 24], maxZoom: 9 });
+})();
+</script>
+JS;
 }
 
 //----------------------------------------------------------------------------------------

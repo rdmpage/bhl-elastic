@@ -691,3 +691,11 @@
 	margin-top: 0.5em;
 }
 
+/* map of the points in an article's text */
+.part-map {
+	height: 22em;
+	border: 1px solid var(--border-color);
+	border-radius: 4px;
+	background-color: var(--thumbnail-bg);
+}
+

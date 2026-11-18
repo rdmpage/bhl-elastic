@@ -314,8 +314,14 @@
 				});
 		})).then(function (annotation_pages) {
 			var items = [];
+			var places = [];
 			annotation_pages.forEach(function (annotation_page) {
 				as_array(annotation_page.items).forEach(function (annotation) {
+					var place = annotation_place(annotation);
+					if (place) {
+						places.push(place);
+						return;
+					}
 					if (annotation.motivation && annotation.motivation !== 'supplementing') {
 						return;
 					}
@@ -331,6 +337,8 @@
 			page.text_items = items;
 			page.text_unplaced = unplaced.join('\n\n');
 			page.text_loading = false;
+			page.places = places;
+			draw_places(page);
 			if (page.state === 'full' || page.loading) {
 				draw_text(page);
 			}
@@ -338,6 +346,63 @@
 				show_page_text();
 			}
 		});
+	}
+
+	// A point on a map that an annotation tags its target with: { boxes, label, lat,
+	// lon }, if its body is a GeoJSON Point (as iiif.php?page=N&annotations=geo gives for
+	// latitude and longitude pairs in the text), otherwise null
+	function annotation_place(annotation) {
+		if (annotation.motivation !== 'tagging') {
+			return null;
+		}
+		var bodies = as_array(annotation.body);
+		for (var i = 0; i < bodies.length; i++) {
+			var body = bodies[i];
+			if (body && body.type === 'Feature' && body.geometry && body.geometry.type === 'Point') {
+				return {
+					boxes: as_array(annotation.target).map(target_box).filter(Boolean),
+					label: body.properties ? label_text(body.properties.label) : '',
+					lon: body.geometry.coordinates[0],
+					lat: body.geometry.coordinates[1]
+				};
+			}
+		}
+		return null;
+	}
+
+	// "24.3667° N, 110.9667° W"
+	function format_point(lat, lon) {
+		return Math.abs(lat).toFixed(4) + '° ' + (lat < 0 ? 'S' : 'N') + ', '
+			+ Math.abs(lon).toFixed(4) + '° ' + (lon < 0 ? 'W' : 'E');
+	}
+
+	// Outline the places on a page, above its text; each opens its point on a map
+	function draw_places(page) {
+		if (page.places_el || !page.places || page.places.length === 0 || !page.width || !page.height) {
+			return;
+		}
+		var layer = document.createElement('div');
+		layer.className = 'viewer-places';
+		page.places.forEach(function (place) {
+			var title = format_point(place.lat, place.lon) + (place.label ? ' (' + place.label + ')' : '') + ': open in OpenStreetMap';
+			var href = 'https://www.openstreetmap.org/?mlat=' + place.lat + '&mlon=' + place.lon
+				+ '#map=10/' + place.lat + '/' + place.lon;
+			place.boxes.forEach(function (box) {
+				var a = document.createElement('a');
+				a.href = href;
+				a.target = '_blank';
+				a.rel = 'noopener';
+				a.title = title;
+				a.setAttribute('aria-label', title);
+				a.style.left = (box[0] / page.width * 100) + '%';
+				a.style.top = (box[1] / page.height * 100) + '%';
+				a.style.width = (box[2] / page.width * 100) + '%';
+				a.style.height = (box[3] / page.height * 100) + '%';
+				layer.appendChild(a);
+			});
+		});
+		page.places_el = layer;
+		page.el.appendChild(layer);
 	}
 
 	// A page's text, for the text panel: its text without boxes if it has any, otherwise

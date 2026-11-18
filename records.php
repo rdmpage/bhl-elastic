@@ -163,7 +163,7 @@ function get_item($itemid)
 			),
 			'_source' => $type == 'part'
 				? array('seq', 'name', 'authors', 'container', 'tags', 'volume', 'issue', 'year', 'pages', 'doi', 'thumbnail')
-				: array('seq', 'name', 'tags', 'thumbnail', 'partid'),
+				: array('seq', 'name', 'tags', 'thumbnail', 'partid', 'locations'),
 			'sort' => array(array('seq' => array('order' => 'asc', 'missing' => '_last'))),
 		);
 
@@ -226,10 +226,26 @@ function get_item($itemid)
 }
 
 //----------------------------------------------------------------------------------------
+// Points from the index (locations, a list of {lat, lon}) as schema.org Places
+function places_jsonld($locations)
+{
+	$places = array();
+	foreach ($locations as $point)
+	{
+		$places[] = (object)array(
+			'type' => 'Place',
+			'geo'  => (object)array('type' => 'GeoCoordinates', 'latitude' => $point->lat, 'longitude' => $point->lon),
+		);
+	}
+	return $places;
+}
+
+//----------------------------------------------------------------------------------------
 // A page search hit as a ListItem of an item or article: the page is a CreativeWork
 // named by its printed page label, its genre the page types BHL gives it, and isPartOf
-// the articles it is in, if any. Its position is the page's sequence number in the
-// item, or $position if it has none.
+// the articles it is in, if any, and spatialCoverage the points (latitude and longitude
+// pairs) in its text, if any (see geotag.php). Its position is the page's sequence
+// number in the item, or $position if it has none.
 function page_list_element($hit, $position)
 {
 	$page = new stdclass;
@@ -239,6 +255,7 @@ function page_list_element($hit, $position)
 	if (isset($hit->_source->name))      { $page->name = $hit->_source->name; }
 	if (isset($hit->_source->thumbnail)) { $page->thumbnailUrl = $hit->_source->thumbnail; }
 	if (isset($hit->_source->tags))      { $page->genre = $hit->_source->tags; }
+	if (isset($hit->_source->locations)) { $page->spatialCoverage = places_jsonld($hit->_source->locations); }
 
 	if (isset($hit->_source->partid))
 	{
@@ -265,10 +282,10 @@ function page_list_element($hit, $position)
 // or CreativeWork) whose isPartOf is the journal, volume and issue it was published in.
 // The scanned item (PublicationVolume) that holds it is added to isPartOf, so the
 // article is also in the item's hasPart (see get_item()). Its pages are an ItemList,
-// in scan order, as for an item.
+// in scan order, as for an item. spatialCoverage is the points (latitude and longitude
+// pairs) in its pages' text, as are each page's.
 //
-// Room for more: works it cites (citation), works citing it, places and taxa it
-// mentions.
+// Room for more: works it cites (citation), works citing it, taxa it mentions.
 function get_part($partid)
 {
 	global $config;
@@ -277,7 +294,7 @@ function get_part($partid)
 
 	$id = 'part_' . (int)$partid;
 
-	$docs = fetch_docs($elastic, array($id), array('itemid', 'titleid', 'seq', 'name', 'authors', 'container', 'tags', 'volume', 'issue', 'year', 'pages', 'doi', 'thumbnail'));
+	$docs = fetch_docs($elastic, array($id), array('itemid', 'titleid', 'seq', 'name', 'authors', 'container', 'tags', 'volume', 'issue', 'year', 'pages', 'doi', 'thumbnail', 'locations'));
 
 	if (!isset($docs[$id]))
 	{
@@ -293,6 +310,12 @@ function get_part($partid)
 
 	$work = part_to_jsonld($id, $part, $titleids, $others);
 	$work = (object)array_merge(array('@context' => create_context()), (array)$work);
+
+	// The points in its pages' text
+	if (isset($part->locations))
+	{
+		$work->spatialCoverage = places_jsonld($part->locations);
+	}
 
 	if ($itemid && isset($others[$itemid]))
 	{
@@ -312,7 +335,7 @@ function get_part($partid)
 				)
 			)
 		),
-		'_source' => array('seq', 'name', 'tags', 'thumbnail', 'partid'),
+		'_source' => array('seq', 'name', 'tags', 'thumbnail', 'partid', 'locations'),
 		'sort' => array(array('seq' => array('order' => 'asc', 'missing' => '_last'))),
 	);
 

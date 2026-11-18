@@ -21,6 +21,9 @@
 	--viewer-page-bg: #f6f6f6;
 	--viewer-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
 	--viewer-mark: #fde68a;
+	--viewer-place: #059669;
+	--viewer-place-bg: rgba(16, 185, 129, 0.12);
+	--viewer-place-hover: rgba(16, 185, 129, 0.3);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -434,6 +437,33 @@ body {
 .viewer-hits div.current {
 	background-color: rgba(249, 115, 22, 0.5);
 	outline: 2px solid rgb(234, 88, 12);
+}
+
+/* Latitude and longitude pairs in the text (see draw_places() in viewer.js), above the
+   text so they can be clicked; each opens its point on a map */
+.viewer-places {
+	position: absolute;
+	inset: 0;
+	z-index: 1;
+	pointer-events: none;
+}
+
+.viewer-places a {
+	position: absolute;
+	box-sizing: content-box;
+	margin: -3px 0 0 -3px;
+	padding: 1px;
+	border: 2px solid var(--viewer-place);
+	border-radius: 3px;
+	background-color: var(--viewer-place-bg);
+	pointer-events: auto;
+	cursor: pointer;
+}
+
+.viewer-places a:hover,
+.viewer-places a:focus-visible {
+	background-color: var(--viewer-place-hover);
+	outline: none;
 }
 
 @media (max-width: 700px) {

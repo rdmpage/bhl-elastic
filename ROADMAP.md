@@ -24,7 +24,7 @@ Where things stand and what to think about next. Last updated 2026-11-14.
 
 ## Next, in rough order
 
-0. **Geospatial.** (1) `geotag.php`: done. (2) `locations` and `annotations` in the index: done. (3) A map of an article's points on its part page; points highlighted in the viewer, placed with `TextBoxes`. (4) A site map from a `geotile_grid` aggregation. New taxonomic names can then be another annotation type.
+0. **Geospatial.** (1) `geotag.php`: done. (2) `locations` and `annotations` in the index: done. (3) Maps and the viewer: done. Pages and parts have `spatialCoverage` (schema.org `Place`s with `GeoCoordinates`) in their JSON-LD; a part page maps its points with Leaflet 1.9.4 and OpenStreetMap tiles, each point listing the pages it is on (opening the viewer there). A manifest's canvases for pages with points link a second AnnotationPage, `iiif.php?page=N&annotations=geo`: `tagging` annotations whose body is a GeoJSON `Feature` (navPlace context) labelled with the text, targeting the words' boxes (99.8% of pairs placed, 3 ms a page) or else the canvas with a `TextQuoteSelector`. The viewer outlines them in green above the text; each opens its point in OpenStreetMap. Not checked in TIFY. (4) A site map from a `geotile_grid` aggregation. New taxonomic names can then be another annotation type.
 
 1. **Titles browser follow-ups.** Sort by number of items (`item_count`) or by date; BHL's subjects are messy subject headings with a long tail, so only the top 15 show.
    - Authors are untyped in title JSON-LD, because the index keeps only names; BHL's `creator.CreatorType` says person, organisation or meeting. Store it (with `CreatorID`) when we get to People.

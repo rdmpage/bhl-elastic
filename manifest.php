@@ -33,6 +33,10 @@ define('TEXT_GRANULARITY_CONTEXT', 'http://iiif.io/api/extension/text-granularit
 // IIIF Content Search 2.0, for searching inside an item or article (search_inside())
 define('SEARCH_CONTEXT', 'http://iiif.io/api/search/2/context.json');
 
+// IIIF's navPlace extension, which defines GeoJSON Features in IIIF JSON-LD; the bodies
+// of annotations of coordinates are Features
+define('NAVPLACE_CONTEXT', 'http://iiif.io/api/extension/navplace/context.json');
+
 // Pages of hits in each response from search_inside(); the rest follow through "next"
 define('SEARCH_PAGE_SIZE', 50);
 
@@ -276,12 +280,28 @@ function page_canvas($page, $seq, $sizes, $text = 'line')
 		)),
 	));
 
+	$canvas->annotations = array();
+
 	if ($text != 'none')
 	{
-		$canvas->annotations = array((object)array(
+		$canvas->annotations[] = (object)array(
 			'id'   => site_url('iiif.php?page=' . $pageid . text_param($text)),
 			'type' => 'AnnotationPage',
-		));
+		);
+	}
+
+	// Coordinates in the page's text
+	if (isset($page->spatialCoverage))
+	{
+		$canvas->annotations[] = (object)array(
+			'id'   => site_url('iiif.php?page=' . $pageid . '&annotations=geo'),
+			'type' => 'AnnotationPage',
+		);
+	}
+
+	if (count($canvas->annotations) == 0)
+	{
+		unset($canvas->annotations);
 	}
 
 	return $canvas;
@@ -381,6 +401,87 @@ function page_annotations($pageid, $text = 'line')
 	}
 
 	return $page;
+}
+
+//----------------------------------------------------------------------------------------
+// The latitude and longitude pairs in a page's text (found by geotag.php, stored in its
+// annotations in the index) as a IIIF AnnotationPage, or null if it has none. Each is a
+// tagging annotation whose body is the point, as a GeoJSON Feature (as in IIIF's
+// navPlace extension) labelled with the text, and whose target is the words' boxes on
+// the canvas, one per line, found by aligning the text with the OCR words; if they
+// cannot be found, the canvas, with the text quoted.
+function geo_annotations($pageid)
+{
+	global $config;
+
+	$elastic = new ElasticSearch($config['elastic_options']);
+	$resp = $elastic->send('GET', '_doc/page_' . (int)$pageid . '?_source=text,annotations');
+
+	if ($resp[0] != 200 || !isset($resp[1]->_source->annotations))
+	{
+		return null;
+	}
+
+	$text = $resp[1]->_source->text;
+	$word_boxes = pages_word_boxes(array((int)$pageid));
+	$boxes = isset($word_boxes[(int)$pageid]) ? new TextBoxes($text, $word_boxes[(int)$pageid]) : null;
+
+	$canvas_id = page_canvas_id($pageid);
+
+	$page = new stdclass;
+	$page->{'@context'} = array(NAVPLACE_CONTEXT, IIIF_CONTEXT);
+	$page->id    = site_url('iiif.php?page=' . (int)$pageid . '&annotations=geo');
+	$page->type  = 'AnnotationPage';
+	$page->items = array();
+
+	$n = 0;
+	foreach ($resp[1]->_source->annotations as $annotation)
+	{
+		if ($annotation->type != 'geo')
+		{
+			continue;
+		}
+
+		$target = array();
+		foreach ($boxes ? $boxes->hit_boxes($annotation->start, $annotation->end) : array() as $box)
+		{
+			$target[] = $canvas_id . '#xywh=' . implode(',', $box);
+		}
+		if (count($target) == 0)
+		{
+			$target = (object)array(
+				'type'     => 'SpecificResource',
+				'source'   => $canvas_id,
+				'selector' => (object)array(
+					'type'   => 'TextQuoteSelector',
+					'prefix' => $annotation->prefix,
+					'exact'  => $annotation->exact,
+					'suffix' => $annotation->suffix,
+				),
+			);
+		}
+		elseif (count($target) == 1)
+		{
+			$target = $target[0];
+		}
+
+		$page->items[] = (object)array(
+			'id'         => $canvas_id . '/geo/' . ++$n,
+			'type'       => 'Annotation',
+			'motivation' => 'tagging',
+			'body'       => (object)array(
+				'type'       => 'Feature',
+				'properties' => (object)array('label' => iiif_label($annotation->exact)),
+				'geometry'   => (object)array(
+					'type'        => 'Point',
+					'coordinates' => array($annotation->value->lon, $annotation->value->lat),
+				),
+			),
+			'target'     => $target,
+		);
+	}
+
+	return count($page->items) > 0 ? $page : null;
 }
 
 //----------------------------------------------------------------------------------------
