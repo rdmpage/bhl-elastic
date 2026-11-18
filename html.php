@@ -92,7 +92,7 @@ function display_navbar($q, $type = 'all')
 		<li><a href="match.php">Match</a></li>
 		<li class="search-item">
 			<form method="get" action="index.php">
-				<input class="search" id="search" name="q" type="text" placeholder="Search for name..." value="' . htmlspecialchars($q) . '">
+				<input class="search" id="search" name="q" type="text" placeholder="Search..." value="' . htmlspecialchars($q) . '">
 				' . $hidden . '
 				<input type="submit" value="Search">
 			</form>

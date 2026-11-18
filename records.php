@@ -335,4 +335,102 @@ function get_part($partid)
 	return $work;
 }
 
+//----------------------------------------------------------------------------------------
+// A person's name as BHL gives it, as a CSL name. BHL names are mostly "Family, Given",
+// sometimes with life dates and a fuller form of the given name, e.g.
+// "Benoist, R. (Raymond), 1881-1970" -> family "Benoist", given "R."; "Richardson, John,
+// Sir, 1787-1865" -> family "Richardson", given "John". A single word is a family name;
+// anything else without a comma is kept whole as a literal.
+function csl_name($name)
+{
+	$name = preg_replace('/\s*\([^)]*\)/u', '', $name);
+	$name = preg_replace('/[,\s]*\d{4}\??-?(\d{4}\??)?\.?$/u', '', $name);
+	$name = trim($name, " \t,");
+
+	$parts = array_map('trim', explode(',', $name));
+
+	if (count($parts) > 1 && $parts[0] != '' && $parts[1] != '')
+	{
+		return array('family' => $parts[0], 'given' => $parts[1]);
+	}
+	if (!preg_match('/\s/u', $name))
+	{
+		return array('family' => $name);
+	}
+	return array('literal' => $name);
+}
+
+//----------------------------------------------------------------------------------------
+// A work's JSON-LD (from get_part()) as CSL-JSON, for formatting citations (with
+// citation.js in the part page, or any CSL processor). Returns an array of one item, as
+// CSL-JSON is a list.
+//
+// Where it was published is read up isPartOf: an issue, a volume, then the journal or
+// book. The scanned item that also appears in isPartOf (a /item/ URL) is skipped, as it
+// is BHL's volume, not a bibliographic one.
+function jsonld_to_csl($work)
+{
+	$csl = new stdclass;
+	$csl->id = 'bhl-' . preg_replace('/^.*\/(\w+)\/(\d+)$/', '$1-$2', $work->id);
+
+	$types = is_array($work->type) ? $work->type : array($work->type);
+	$map   = array('ScholarlyArticle' => 'article-journal', 'Chapter' => 'chapter');
+	$csl->type = isset($map[$types[0]]) ? $map[$types[0]] : 'document';
+
+	if (isset($work->name)) { $csl->title = $work->name; }
+
+	if (isset($work->author))
+	{
+		$csl->author = array();
+		foreach ($work->author as $author)
+		{
+			$csl->author[] = (object)csl_name($author->name);
+		}
+	}
+
+	if (isset($work->datePublished) && preg_match('/^(\d{4})/', $work->datePublished, $m))
+	{
+		$csl->issued = (object)array('date-parts' => array(array((int)$m[1])));
+	}
+
+	// Where it was published
+	$containers = isset($work->isPartOf) ? (is_array($work->isPartOf) ? $work->isPartOf : array($work->isPartOf)) : array();
+	$container = null;
+	foreach ($containers as $c)
+	{
+		if (!(isset($c->id) && preg_match('/\/item\/\d+$/', $c->id)))
+		{
+			$container = $c;
+			break;
+		}
+	}
+	while ($container)
+	{
+		if (is_array($container))
+		{
+			$container = count($container) > 0 ? $container[0] : null;
+			continue;
+		}
+		if (isset($container->issueNumber))  { $csl->issue = $container->issueNumber; }
+		if (isset($container->volumeNumber)) { $csl->volume = $container->volumeNumber; }
+		if (isset($container->name) && !isset($csl->{'container-title'}))
+		{
+			$csl->{'container-title'} = $container->name;
+		}
+		$container = isset($container->isPartOf) ? $container->isPartOf : null;
+	}
+
+	if (isset($work->pagination)) { $csl->page = str_replace('–', '-', $work->pagination); }
+
+	if (isset($work->sameAs) && preg_match('/^https:\/\/doi.org\/(.*)$/', $work->sameAs, $m))
+	{
+		$csl->DOI = $m[1];
+	}
+
+	$csl->URL = $work->id;
+	$csl->source = 'Biodiversity Heritage Library';
+
+	return array($csl);
+}
+
 ?>

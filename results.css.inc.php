@@ -624,3 +624,70 @@
 		cursor: pointer;
 	}
 }
+
+/* citing an article */
+.cite-bar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5em;
+	align-items: center;
+	margin-bottom: 0.6em;
+}
+
+.cite-styles {
+	display: inline-flex;
+}
+
+.cite-bar button {
+	font: inherit;
+	font-size: 0.85em;
+	padding: 0.25em 0.8em;
+	border: 1px solid var(--border-color);
+	background-color: var(--bg);
+	color: var(--text);
+	cursor: pointer;
+}
+
+.cite-styles button {
+	border-radius: 0;
+	margin-left: -1px;
+}
+
+.cite-styles button:first-child {
+	border-radius: 4px 0 0 4px;
+	margin-left: 0;
+}
+
+.cite-styles button:last-child {
+	border-radius: 0 4px 4px 0;
+}
+
+.cite-styles button[aria-pressed="true"] {
+	background-color: var(--button-bg);
+	border-color: var(--button-border);
+	color: var(--button-text);
+	position: relative;
+}
+
+.cite-copy {
+	border-radius: 4px;
+}
+
+.cite-copy:disabled {
+	cursor: default;
+	color: var(--muted-text);
+}
+
+.cite-output {
+	padding: 0.6em 0.8em;
+	border: 1px solid var(--border-color);
+	border-radius: 4px;
+	background-color: var(--thumbnail-bg);
+	overflow-wrap: anywhere;
+	min-height: 1.5em;
+}
+
+.cite-downloads {
+	margin-top: 0.5em;
+}
+

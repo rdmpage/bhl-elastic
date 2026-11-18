@@ -1470,6 +1470,8 @@ function display_part($partid)
 	display_summary_row('BHL', '<a href="' . htmlspecialchars($part->id) . '">' . htmlspecialchars($part->id) . '</a>');
 	echo '</dl>';
 
+	display_cite($partid);
+
 	if ($part->numberOfItems > 0)
 	{
 		echo '<h2>Pages</h2>';
@@ -1508,6 +1510,118 @@ function display_part($partid)
 	echo '</div>';
 
 	display_main_end();
+}
+
+//----------------------------------------------------------------------------------------
+// Citing a part: the reference in a choice of styles, to copy, and BibTeX, RIS and
+// CSL-JSON to download. The CSL-JSON comes from api.php?part=N&format=csl, and
+// citation.js (large, so loaded only when this section comes into view) formats it.
+function display_cite($partid)
+{
+	$csl_url = 'api.php?part=' . (int)$partid . '&format=csl';
+
+	echo '<section class="cite" data-csl="' . htmlspecialchars($csl_url) . '">';
+	echo '<h2>Cite</h2>';
+	echo '<div class="cite-bar">';
+	echo '<div class="cite-styles" role="group" aria-label="Citation style">';
+	foreach (array('apa' => 'APA', 'harvard1' => 'Harvard', 'vancouver' => 'Vancouver') as $template => $label)
+	{
+		echo '<button type="button" data-template="' . $template . '"' . ($template == 'apa' ? ' aria-pressed="true"' : ' aria-pressed="false"') . '>' . $label . '</button>';
+	}
+	echo '</div>';
+	echo '<button type="button" class="cite-copy" disabled>Copy</button>';
+	echo '</div>';
+	echo '<div class="cite-output" aria-live="polite">Formatting the reference…</div>';
+	// BibTeX and RIS appear once citation.js has made them
+	echo '<p class="hit-meta cite-downloads">Download '
+		. '<span hidden><a class="cite-download" data-format="bibtex" data-ext="bib" data-type="application/x-bibtex">BibTeX</a> · </span>'
+		. '<span hidden><a class="cite-download" data-format="ris" data-ext="ris" data-type="application/x-research-info-systems">RIS</a> · </span>'
+		. '<a href="' . htmlspecialchars($csl_url) . '">CSL-JSON</a></p>';
+	echo '</section>';
+
+	echo <<<'JS'
+<script>
+(function () {
+	var section = document.querySelector(".cite");
+	var output  = section.querySelector(".cite-output");
+	var copy    = section.querySelector(".cite-copy");
+	var buttons = section.querySelectorAll(".cite-styles button");
+	var cite    = null;
+
+	var template = "apa";
+	try { template = localStorage.getItem("cite-template") || template; } catch (e) {}
+	if (!section.querySelector('[data-template="' + template + '"]')) { template = "apa"; }
+
+	function show() {
+		buttons.forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.template == template ? "true" : "false"); });
+		if (!cite) { return; }
+		output.innerHTML = cite.format("bibliography", { format: "html", template: template, lang: "en-US" });
+		// A single reference needs no "1."
+		output.querySelectorAll(".csl-left-margin").forEach(function (el) { el.remove(); });
+	}
+
+	buttons.forEach(function (b) {
+		b.addEventListener("click", function () {
+			template = b.dataset.template;
+			try { localStorage.setItem("cite-template", template); } catch (e) {}
+			show();
+		});
+	});
+
+	// Copy as rich text (italics survive pasting into a word processor) and plain text
+	copy.addEventListener("click", function () {
+		var entry = output.querySelector(".csl-entry") || output;
+		var html  = entry.innerHTML.trim();
+		var text  = entry.textContent.replace(/\s+/g, " ").trim();
+		var done  = function () { copy.textContent = "Copied"; setTimeout(function () { copy.textContent = "Copy"; }, 1500); };
+		if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
+			navigator.clipboard.write([new ClipboardItem({
+				"text/html":  new Blob([html], { type: "text/html" }),
+				"text/plain": new Blob([text], { type: "text/plain" })
+			})]).then(done, function () { navigator.clipboard.writeText(text).then(done); });
+		} else if (navigator.clipboard) {
+			navigator.clipboard.writeText(text).then(done);
+		}
+	});
+
+	function start() {
+		var script = document.createElement("script");
+		script.src = "https://cdn.jsdelivr.net/npm/citation-js@0.9.0/build/citation.min.js";
+		script.onload = function () {
+			fetch(section.dataset.csl)
+				.then(function (r) { return r.json(); })
+				.then(function (csl) {
+					var Cite = require("citation-js");
+					cite = new Cite(csl);
+					show();
+					copy.disabled = false;
+					section.querySelectorAll(".cite-download").forEach(function (a) {
+						var blob = new Blob([cite.format(a.dataset.format)], { type: a.dataset.type });
+						a.href = URL.createObjectURL(blob);
+						a.download = csl[0].id + "." + a.dataset.ext;
+						a.parentNode.hidden = false;
+					});
+				})
+				.catch(function () { output.textContent = "Could not format the reference."; });
+		};
+		script.onerror = function () { output.textContent = "Could not load the citation formatter."; };
+		document.head.appendChild(script);
+	}
+
+	if ("IntersectionObserver" in window) {
+		var observer = new IntersectionObserver(function (entries) {
+			if (entries.some(function (e) { return e.isIntersecting; })) {
+				observer.disconnect();
+				start();
+			}
+		}, { rootMargin: "300px" });
+		observer.observe(section);
+	} else {
+		start();
+	}
+})();
+</script>
+JS;
 }
 
 //----------------------------------------------------------------------------------------

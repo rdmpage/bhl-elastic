@@ -11,6 +11,8 @@
 //   api.php?title=9243                  (a title and its items)
 //   api.php?item=222763                 (an item, its articles and its pages)
 //   api.php?part=431953                 (an article and its pages)
+//   api.php?part=431953&format=csl      (the article as CSL-JSON, for citations; also
+//                                       sent for Accept: application/vnd.citationstyles.csl+json)
 
 error_reporting(E_ALL);
 
@@ -18,12 +20,25 @@ require_once (dirname(__FILE__) . '/search.php');
 require_once (dirname(__FILE__) . '/records.php');
 
 //----------------------------------------------------------------------------------------
-function send_json($status, $obj)
+function send_json($status, $obj, $type = 'application/ld+json')
 {
 	http_response_code($status);
-	header('Content-Type: application/ld+json; charset=utf-8');
+	header('Content-Type: ' . $type . '; charset=utf-8');
 	header('Access-Control-Allow-Origin: *');
+	header('Vary: Accept');
 	echo json_encode($obj, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+}
+
+//----------------------------------------------------------------------------------------
+// Whether to send CSL-JSON rather than JSON-LD: asked for with format=csl, or by content
+// negotiation, as doi.org does
+function wants_csl()
+{
+	if (isset($_GET['format']))
+	{
+		return $_GET['format'] == 'csl';
+	}
+	return isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/vnd.citationstyles.csl+json') !== false;
 }
 
 //----------------------------------------------------------------------------------------
@@ -67,7 +82,18 @@ function main()
 		try
 		{
 			$part = get_part((int)$_GET['part']);
-			$part ? send_json(200, $part) : send_json(404, array('error' => 'No such part'));
+			if (!$part)
+			{
+				send_json(404, array('error' => 'No such part'));
+			}
+			elseif (wants_csl())
+			{
+				send_json(200, jsonld_to_csl($part), 'application/vnd.citationstyles.csl+json');
+			}
+			else
+			{
+				send_json(200, $part);
+			}
 		}
 		catch (Exception $e)
 		{
