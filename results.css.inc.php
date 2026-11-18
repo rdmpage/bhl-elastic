@@ -181,6 +181,7 @@
 	width: 80px;
 	flex: 0 0 auto;
 	background-color: var(--thumbnail-bg);
+	border: 1px solid var(--thumbnail-edge);
 }
 
 .title-summary {
@@ -284,6 +285,7 @@
 	object-position: center bottom;
 	border: none;
 	background-color: transparent;
+	filter: drop-shadow(0 0 0.5px var(--thumbnail-edge)) drop-shadow(0 0 0.5px var(--thumbnail-edge));
 }
 
 .items-grid .page-name {
@@ -439,6 +441,8 @@
 	height: 100%;
 	object-fit: contain;
 	display: block;
+	/* follows the image itself, not its letterboxed box */
+	filter: drop-shadow(0 0 0.5px var(--thumbnail-edge)) drop-shadow(0 0 0.5px var(--thumbnail-edge));
 }
 
 .coverage-label {
@@ -457,9 +461,19 @@
 	border-radius: 2px;
 }
 
+/* a frame in a layer of its own above the image, which would otherwise paint over it
+   (its drop-shadow filter puts it on top) */
 .coverage-page.coverage-plate .coverage-image {
-	outline: 2px solid var(--text);
-	outline-offset: -2px;
+	position: relative;
+}
+
+.coverage-page.coverage-plate .coverage-image::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	z-index: 1;
+	box-shadow: inset 0 0 0 2px var(--text);
+	pointer-events: none;
 }
 
 .coverage-active {

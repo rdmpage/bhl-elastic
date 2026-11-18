@@ -42,6 +42,8 @@
 	--muted-text: #666;
 	--highlight-bg: #fff3b0;
 	--thumbnail-bg: #f4f4f4;
+	/* a hairline round page images, so white pages do not vanish into the page */
+	--thumbnail-edge: rgba(0, 0, 0, 0.35);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -89,5 +91,6 @@
 	--muted-text: #999;
 	--highlight-bg: #4a4220;
 	--thumbnail-bg: #222;
+	--thumbnail-edge: rgba(255, 255, 255, 0.3);
   }
 }
