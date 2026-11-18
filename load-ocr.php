@@ -28,6 +28,10 @@
 // newer archive overwrites rather than duplicates.
 //
 // part/ entries are counted and skipped: page-to-part membership comes from partpage.
+//
+// Pages with latitude and longitude pairs in their text get locations and annotations
+// (see geotag.php). Parts and items get their pages' locations from load-geo.php
+// --rollup, run after load-metadata.php, which replaces their documents.
 
 // Command line only
 if (PHP_SAPI != 'cli')
@@ -39,6 +43,7 @@ require_once (dirname(__FILE__) . '/sqlite.php');
 require_once (dirname(__FILE__) . '/elastic.php');
 require_once (dirname(__FILE__) . '/ocr.php');
 require_once (dirname(__FILE__) . '/bhl.php');
+require_once (dirname(__FILE__) . '/geotag.php');
 
 //----------------------------------------------------------------------------------------
 // Page documents for one item. $ocr maps PageID => raw OCR text.
@@ -186,6 +191,15 @@ function item_page_docs($stmts, $itemid, $ocr, &$stats)
 			else
 			{
 				$doc->text = $text;
+
+				// Latitude and longitude pairs in the text (see geotag.php)
+				$geo = page_geo($text);
+				if ($geo)
+				{
+					$doc->locations   = $geo['locations'];
+					$doc->annotations = $geo['annotations'];
+					$stats['pages_geo']++;
+				}
 			}
 		}
 
@@ -255,6 +269,7 @@ $stats = array(
 	'ocr_files'         => 0,
 	'docs'              => 0,
 	'pages_empty'       => 0,
+	'pages_geo'         => 0,
 	'pages_no_ocr'      => 0,
 	'pages_no_metadata' => 0,
 	'part_files'        => 0,

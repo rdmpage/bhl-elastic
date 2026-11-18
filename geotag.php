@@ -179,4 +179,46 @@ function tag_geo($text)
 	return $found;
 }
 
+//----------------------------------------------------------------------------------------
+// A page's coordinates as fields of its Elasticsearch document, or null if it has none:
+// locations, the distinct points (a geo_point list, to search and map), and
+// annotations, each pair where it is in the text (stored, not indexed, for the viewer).
+// An annotation has a type ("geo"), the quote (prefix, exact, suffix), where it is
+// (start, end, bytes in the page's text), and its value, here the point; other kinds of
+// annotation, such as new taxonomic names, can use the same shape.
+function page_geo($text)
+{
+	$found = tag_geo($text);
+
+	if (count($found) == 0)
+	{
+		return null;
+	}
+
+	$locations   = array();
+	$annotations = array();
+
+	foreach ($found as $f)
+	{
+		$point = array('lat' => $f['lat'], 'lon' => $f['lon']);
+
+		$locations[$f['lat'] . ',' . $f['lon']] = $point;
+
+		$annotations[] = array(
+			'type'   => 'geo',
+			'prefix' => $f['prefix'],
+			'exact'  => $f['exact'],
+			'suffix' => $f['suffix'],
+			'start'  => $f['start'],
+			'end'    => $f['end'],
+			'value'  => $point,
+		);
+	}
+
+	return array(
+		'locations'   => array_values($locations),
+		'annotations' => $annotations,
+	);
+}
+
 ?>
