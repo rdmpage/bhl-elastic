@@ -355,6 +355,142 @@ function item_to_jsonld($id, $item, $titleids, $docs)
 }
 
 //----------------------------------------------------------------------------------------
+// An area of the map from "west,south,east,north" in decimal degrees, as
+// array(west, south, east, north), or null if it is not one. West may be greater than
+// east, for an area across the antimeridian.
+function parse_bbox($value)
+{
+	$parts = explode(',', (string)$value);
+	if (count($parts) != 4 || !is_numeric($parts[0]) || !is_numeric($parts[1]) || !is_numeric($parts[2]) || !is_numeric($parts[3]))
+	{
+		return null;
+	}
+
+	list($west, $south, $east, $north) = array_map('floatval', $parts);
+
+	// A map zoomed out shows the world more than once
+	if ($east - $west >= 360)
+	{
+		$west = -180;
+		$east = 180;
+	}
+	$wrap = function ($lon) {
+		return fmod(fmod($lon + 180, 360) + 360, 360) - 180;
+	};
+	if ($west != -180 || $east != 180)
+	{
+		$west = $wrap($west);
+		$east = $wrap($east);
+	}
+
+	$south = max(-90, min(90, $south));
+	$north = max(-90, min(90, $north));
+
+	return $south < $north ? array($west, $south, $east, $north) : null;
+}
+
+//----------------------------------------------------------------------------------------
+// The query for text search (see search_text()), and for the map (see map_grid()):
+// pages with the words of $q, and, with $bbox, a point in that area
+function text_query($q, $bbox = null)
+{
+	$query = array(
+		'bool' => array(
+			'filter' => array(
+				array('term' => array('type' => 'page')),
+			),
+		)
+	);
+
+	if (trim($q) != '')
+	{
+		$query['bool']['must'] = array(
+			'match' => array('text' => array('query' => $q, 'minimum_should_match' => '3<75%'))
+		);
+		$query['bool']['should'] = array(
+			'match_phrase' => array('text' => array('query' => $q, 'slop' => 3, 'boost' => 3))
+		);
+	}
+
+	if ($bbox)
+	{
+		$query['bool']['filter'][] = array('geo_bounding_box' => array('locations' => array(
+			'top_left'     => array('lat' => $bbox[3], 'lon' => $bbox[0]),
+			'bottom_right' => array('lat' => $bbox[1], 'lon' => $bbox[2]),
+		)));
+	}
+
+	return $query;
+}
+
+//----------------------------------------------------------------------------------------
+// The points in page text in an area, for a map at zoom level $zoom, as a GeoJSON
+// FeatureCollection: map tiles (geotile_grid) two levels finer than the map, each a
+// Point at the middle of its points, with count the pages with a point in it, and tile
+// its z/x/y. With $q, only pages with those words. foreign members say how many pages
+// there are in all.
+function map_grid($q, $bbox, $zoom)
+{
+	global $config;
+
+	$elastic = new ElasticSearch($config['elastic_options']);
+
+	$precision = max(0, min(29, (int)$zoom + 2));
+
+	$grid = array(
+		'field'     => 'locations',
+		'precision' => $precision,
+		'size'      => 10000,
+	);
+	if ($bbox)
+	{
+		// Only points in the area, not every point of a page with one there
+		$grid['bounds'] = array(
+			'top_left'     => array('lat' => $bbox[3], 'lon' => $bbox[0]),
+			'bottom_right' => array('lat' => $bbox[1], 'lon' => $bbox[2]),
+		);
+	}
+
+	$query = array(
+		'size'  => 0,
+		'query' => text_query($q, $bbox ? $bbox : array(-180, -90, 180, 90)),
+		'aggs'  => array(
+			'tiles' => array(
+				'geotile_grid' => $grid,
+				'aggs' => array('middle' => array('geo_centroid' => array('field' => 'locations'))),
+			),
+		),
+		'track_total_hits' => true,
+	);
+
+	$resp = $elastic->send('POST', '_search', json_encode($query));
+
+	if ($resp[0] != 200)
+	{
+		throw new Exception('Search failed (HTTP ' . $resp[0] . ')');
+	}
+
+	$collection = new stdclass;
+	$collection->type = 'FeatureCollection';
+	$collection->pages = $resp[1]->hits->total->value;
+	$collection->features = array();
+
+	foreach ($resp[1]->aggregations->tiles->buckets as $bucket)
+	{
+		$collection->features[] = (object)array(
+			'type'       => 'Feature',
+			'geometry'   => (object)array(
+				'type'        => 'Point',
+				'coordinates' => array(round($bucket->middle->location->lon, 5), round($bucket->middle->location->lat, 5)),
+			),
+			'properties' => (object)array('count' => $bucket->doc_count, 'tile' => $bucket->key),
+		);
+	}
+
+	return $collection;
+}
+
+//----------------------------------------------------------------------------------------
 // Search page text. A page matches if it has all the words of a query of up to three
 // words (e.g. a binomial), or 75% of the words of a longer one (e.g. a citation, where
 // OCR errors and line breaks lose some words). Pages with the words as a phrase, allowing
@@ -370,7 +506,11 @@ function item_to_jsonld($id, $item, $titleids, $docs)
 // OfferCatalogs are in schema.org's examples): numberOfItems is how many of its pages
 // matched, and itemListElement holds the best $pages of them, ranked, with scores. Up to
 // 100 pages per result (Elasticsearch's index.max_inner_result_window).
-function search_text($q, $from = 0, $size = 20, $pages_per_result = 3)
+//
+// With $bbox (see parse_bbox()), only pages with a point (a latitude and longitude pair
+// in their text, see geotag.php) in that area; $q can then be empty, for all of them,
+// newest first.
+function search_text($q, $from = 0, $size = 20, $pages_per_result = 3, $bbox = null)
 {
 	global $config;
 
@@ -381,19 +521,7 @@ function search_text($q, $from = 0, $size = 20, $pages_per_result = 3)
 	$query = array(
 		'from' => $from,
 		'size' => $size,
-		'query' => array(
-			'bool' => array(
-				'filter' => array(
-					'term' => array('type' => 'page')
-				),
-				'must' => array(
-					'match' => array('text' => array('query' => $q, 'minimum_should_match' => '3<75%'))
-				),
-				'should' => array(
-					'match_phrase' => array('text' => array('query' => $q, 'slop' => 3, 'boost' => 3))
-				),
-			)
-		),
+		'query' => text_query($q, $bbox),
 		'_source' => false,
 		'collapse' => array(
 			'field' => 'group',
@@ -413,6 +541,12 @@ function search_text($q, $from = 0, $size = 20, $pages_per_result = 3)
 			'groups' => array('cardinality' => array('field' => 'group')),
 		),
 	);
+
+	// Without words to rank by, newest first
+	if (trim($q) == '')
+	{
+		$query['sort'] = array(array('year' => array('order' => 'desc', 'missing' => '_last')));
+	}
 
 	$resp = $elastic->send('POST', '_search', json_encode($query));
 
@@ -441,7 +575,7 @@ function search_text($q, $from = 0, $size = 20, $pages_per_result = 3)
 	$list = new stdclass;
 	$list->{'@context'} = create_context();
 	$list->type = 'ItemList';
-	$list->name = 'Search results for "' . $q . '"';
+	$list->name = trim($q) == '' ? 'Pages with points in an area' : 'Search results for "' . $q . '"';
 	$list->numberOfItems = $resp[1]->aggregations->groups->value;
 	$list->itemListElement = array();
 

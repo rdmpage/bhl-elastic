@@ -11,6 +11,11 @@
 //   api.php?title=9243                  (a title and its items)
 //   api.php?item=222763                 (an item, its articles and its pages)
 //   api.php?part=431953                 (an article and its pages)
+//   api.php?bbox=29,-26,32,-22         (pages with a latitude and longitude pair in their
+//                                       text in an area, west,south,east,north, grouped
+//                                       like a text search; add q to search them)
+//   api.php?type=map&bbox=-180,-90,180,90&zoom=2   (how many such pages there are in
+//                                       each part of the map, as GeoJSON; q as above)
 //   api.php?part=431953&format=csl      (the article as CSL-JSON, for citations; also
 //                                       sent for Accept: application/vnd.citationstyles.csl+json)
 
@@ -94,6 +99,37 @@ function main()
 			{
 				send_json(200, $part);
 			}
+		}
+		catch (Exception $e)
+		{
+			send_json(502, array('error' => $e->getMessage()));
+		}
+		return;
+	}
+
+	$bbox = isset($_GET['bbox']) ? parse_bbox($_GET['bbox']) : null;
+
+	// The map: counts of pages with points, as GeoJSON
+	if (isset($_GET['type']) && $_GET['type'] == 'map')
+	{
+		try
+		{
+			$zoom = isset($_GET['zoom']) ? (int)$_GET['zoom'] : 2;
+			send_json(200, map_grid($q, $bbox, $zoom), 'application/geo+json');
+		}
+		catch (Exception $e)
+		{
+			send_json(502, array('error' => $e->getMessage()));
+		}
+		return;
+	}
+
+	// Pages with points in an area, with or without a query
+	if ($bbox && $type == 'all')
+	{
+		try
+		{
+			send_json(200, search_text($q, $from, 20, $pages, $bbox));
 		}
 		catch (Exception $e)
 		{

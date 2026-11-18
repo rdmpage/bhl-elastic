@@ -699,3 +699,82 @@
 	background-color: var(--thumbnail-bg);
 }
 
+/* the map of points in the text: the map beside the list of what is in view */
+.map-layout {
+	display: grid;
+	grid-template-columns: minmax(0, 3fr) minmax(20em, 2fr);
+	height: calc(100vh - var(--nav-height) - 1px);
+}
+
+.map-pane {
+	height: 100%;
+	background-color: var(--thumbnail-bg);
+}
+
+.map-side {
+	overflow-y: auto;
+	padding: 0.8em 1em 2em 1em;
+	border-left: 1px solid var(--border-color);
+}
+
+.map-filter {
+	display: flex;
+	gap: 0.5em;
+}
+
+.map-filter input {
+	flex: 1 1 auto;
+	min-width: 0;
+	font: inherit;
+	padding: 0.3em 0.5em;
+	border: 1px solid var(--input-border);
+	border-radius: 4px;
+	background-color: var(--input-bg);
+	color: var(--input-color);
+}
+
+.map-filter button,
+.map-results .pager button {
+	font: inherit;
+	padding: 0.3em 0.8em;
+	border: 1px solid var(--border-color);
+	border-radius: 4px;
+	background-color: var(--bg);
+	color: var(--text);
+	cursor: pointer;
+}
+
+/* a count of pages, sized by how many; the number is centred in its own span, as
+   Leaflet's stylesheet (loaded later) makes the marker itself display: block */
+.map-count {
+	border-radius: 50%;
+	background-color: rgba(5, 150, 105, 0.85);
+	border: 2px solid #fff;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+	color: #fff;
+	font: 600 11px/1 sans-serif;
+	box-sizing: border-box;
+}
+
+.map-count span {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	height: 100%;
+}
+
+@media (max-width: 800px) {
+	.map-layout {
+		grid-template-columns: 1fr;
+		height: auto;
+	}
+	.map-pane {
+		height: 60vh;
+	}
+	.map-side {
+		border-left: none;
+		overflow-y: visible;
+	}
+}
+

@@ -90,6 +90,7 @@ function display_navbar($q, $type = 'all')
 		<li><a href=".">Home</a></li>
 		<li><a href="index.php?type=titles">Titles</a></li>
 		<li><a href="match.php">Match</a></li>
+		<li><a href="index.php?map=1">Map</a></li>
 		<li class="search-item">
 			<form method="get" action="index.php">
 				<input class="search" id="search" name="q" type="text" placeholder="Search..." value="' . htmlspecialchars($q) . '">

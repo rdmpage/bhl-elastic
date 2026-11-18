@@ -157,6 +157,19 @@ function home_cards()
 				'Match citations' => 'match.php',
 			),
 		),
+		array(
+			'title'    => 'Map',
+			'href'     => 'index.php?map=1',
+			'image'    => $image('europeanjournal236muse', 15),
+			'position' => '50% 40%',
+			'zoom'     => 1.4,
+			'text'     => 'Latitudes and longitudes found in the text, on a map, to find what has been written about a place, or where something has been found.',
+			'examples' => array(
+				'Southern Africa'       => 'index.php?map=1#5/-26.0000/28.0000',
+				'Gulella (land snails)' => 'index.php?map=1&q=Gulella#5/-26.0000/30.0000',
+				'New Caledonia'         => 'index.php?map=1#7/-21.3000/165.5000',
+			),
+		),
 	);
 }
 
@@ -165,7 +178,6 @@ function home_cards()
 function home_planned()
 {
 	return array(
-		array('title' => 'Map', 'text' => 'Places mentioned in the text, on a map, to find what has been written about a place.'),
 		array('title' => 'Browse by taxon', 'text' => 'Taxonomic names found in the text, arranged in their classification.'),
 		array('title' => 'Timeline', 'text' => 'When a name or topic appears in the literature, year by year.'),
 		array('title' => 'Search images', 'text' => 'Find plates and figures, not just text.'),
@@ -1513,6 +1525,207 @@ function display_part($partid)
 }
 
 //----------------------------------------------------------------------------------------
+// The map: every latitude and longitude pair found in page text (see geotag.php),
+// counted in squares that get finer as you zoom in (api.php?type=map), beside the
+// articles and volumes with points in view (display_map_results(), fetched as the map
+// moves). $q limits both to pages with those words. Where the map is goes in the URL's
+// hash, #zoom/lat/lon, so a view can be linked to.
+function display_map($q)
+{
+	global $config;
+
+	display_html_start(($q != '' ? $q . ' - ' : '') . 'Map - ' . $config['site_name']);
+	display_navbar('');
+	display_main_start();
+
+	echo '<div class="map-layout">';
+	echo '<div class="map-pane" id="site-map" role="region" aria-label="Map of points in the text"></div>';
+	echo '<aside class="map-side">';
+	echo '<form class="map-filter" method="get" action="index.php">';
+	echo '<input type="hidden" name="map" value="1">';
+	echo '<input type="search" name="q" value="' . htmlspecialchars($q) . '" placeholder="Only pages with these words, e.g. Gulella" aria-label="Only pages with these words">';
+	echo '<button type="submit">Filter</button>';
+	echo '</form>';
+	echo '<p class="hit-meta">Latitude and longitude pairs found in the text of ' . htmlspecialchars($config['site_name']) . '. Click a number to zoom in.</p>';
+	echo '<div class="map-results" aria-live="polite"><p class="results-summary">Loading…</p></div>';
+	echo '<noscript><p>The map needs JavaScript.</p></noscript>';
+	echo '</aside>';
+	echo '</div>';
+
+	echo '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">';
+	echo '<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>';
+	echo '<script>var map_query = ' . json_encode($q, JSON_HEX_TAG | JSON_UNESCAPED_UNICODE) . ';</script>';
+
+	echo <<<'JS'
+<script>
+(function () {
+	var results = document.querySelector(".map-results");
+	var map = L.map("site-map", { worldCopyJump: true, minZoom: 1 });
+	L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+		maxZoom: 18,
+		attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+	}).addTo(map);
+
+	var markers = L.layerGroup().addTo(map);
+	var run = 0;
+	var timer = null;
+
+	// Where to start: the hash, or the world
+	var m = location.hash.match(/^#(\d+)\/(-?[\d.]+)\/(-?[\d.]+)$/);
+	if (m) {
+		map.setView([parseFloat(m[2]), parseFloat(m[3])], parseInt(m[1], 10));
+	} else {
+		map.setView([15, 20], 2);
+	}
+
+	function params(extra) {
+		var b = map.getBounds();
+		var p = new URLSearchParams({
+			bbox: [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()].map(function (v) { return v.toFixed(5); }).join(","),
+			q: map_query
+		});
+		Object.keys(extra || {}).forEach(function (k) { p.set(k, extra[k]); });
+		return p.toString();
+	}
+
+	// A map tile's bounds from its z/x/y
+	function tile_bounds(key) {
+		var t = key.split("/").map(Number);
+		var n = Math.pow(2, t[0]);
+		var lat = function (y) { return Math.atan(Math.sinh(Math.PI * (1 - 2 * y / n))) * 180 / Math.PI; };
+		return L.latLngBounds([lat(t[2] + 1), t[1] / n * 360 - 180], [lat(t[2]), (t[1] + 1) / n * 360 - 180]);
+	}
+
+	function draw(collection) {
+		markers.clearLayers();
+		collection.features.forEach(function (f) {
+			var count = f.properties.count;
+			var latlng = [f.geometry.coordinates[1], f.geometry.coordinates[0]];
+			var size = Math.round(18 + 7 * Math.log10(count));
+			var marker = L.marker(latlng, {
+				icon: L.divIcon({
+					className: "map-count",
+					html: "<span>" + (count > 1 ? count.toLocaleString() : "") + "</span>",
+					iconSize: count > 1 ? [size, size] : [12, 12]
+				}),
+				title: count.toLocaleString() + " page" + (count === 1 ? "" : "s"),
+				alt: count.toLocaleString() + " page" + (count === 1 ? "" : "s")
+			});
+			marker.on("click", function () {
+				map.fitBounds(tile_bounds(f.properties.tile), { maxZoom: 16 });
+			});
+			markers.addLayer(marker);
+		});
+	}
+
+	function list(from) {
+		var mine = run;
+		fetch("index.php?map=1&fragment=1&" + params({ from: from }))
+			.then(function (r) { return r.text(); })
+			.then(function (html) {
+				if (mine === run) {
+					results.innerHTML = html;
+					results.scrollTop = 0;
+				}
+			});
+	}
+
+	function update() {
+		var mine = ++run;
+		var c = map.getCenter();
+		history.replaceState(null, "", "#" + map.getZoom() + "/" + c.lat.toFixed(4) + "/" + c.lng.toFixed(4));
+		fetch("api.php?type=map&zoom=" + map.getZoom() + "&" + params())
+			.then(function (r) { return r.json(); })
+			.then(function (collection) {
+				if (mine === run) {
+					draw(collection);
+				}
+			});
+		list(0);
+	}
+
+	map.on("moveend", function () {
+		clearTimeout(timer);
+		timer = setTimeout(update, 250);
+	});
+
+	// More results, without leaving the map
+	results.addEventListener("click", function (event) {
+		var button = event.target.closest("button[data-from]");
+		if (button) {
+			list(parseInt(button.dataset.from, 10));
+		}
+	});
+
+	update();
+})();
+</script>
+JS;
+
+	display_main_end();
+	display_html_end();
+}
+
+//----------------------------------------------------------------------------------------
+// The articles and volumes with points in an area, for the side of the map, as an HTML
+// fragment (from search_text()'s JSON-LD, as api.php?bbox= gives), with buttons for more
+function display_map_results($q, $bbox, $from)
+{
+	$size = 20;
+
+	if (!$bbox)
+	{
+		echo '<p class="results-summary">No area given.</p>';
+		return;
+	}
+
+	try
+	{
+		$list = json_decode(json_encode(search_text($q, $from, $size, 3, $bbox)));
+	}
+	catch (Exception $e)
+	{
+		echo '<div class="error">' . htmlspecialchars($e->getMessage()) . '</div>';
+		return;
+	}
+
+	$count = count($list->itemListElement);
+	$n     = $list->numberOfItems;
+
+	echo '<p class="results-summary">' . number_format($n) . ' article' . ($n == 1 ? '' : 's') . ' or volume' . ($n == 1 ? '' : 's') . ' with points in view';
+	if ($count > 0)
+	{
+		echo ', showing ' . number_format($from + 1) . '–' . number_format($from + $count);
+	}
+	$api = array('bbox' => implode(',', $bbox));
+	if ($q != '')
+	{
+		$api['q'] = $q;
+	}
+	echo ' · <a href="api.php?' . htmlspecialchars(http_build_query($api)) . '">JSON-LD</a></p>';
+
+	$ids = array();
+	foreach ($list->itemListElement as $element)
+	{
+		$ids[] = $element->item->id;
+	}
+	$readable = works_with_manifests($ids);
+
+	foreach ($list->itemListElement as $element)
+	{
+		display_result($element->item, $readable, $q);
+	}
+
+	if ($from > 0 || $from + $size < $n)
+	{
+		echo '<div class="pager">';
+		echo $from > 0 ? '<button type="button" data-from="' . max(0, $from - $size) . '">← Previous</button>' : '<span></span>';
+		echo $from + $size < $n ? '<button type="button" data-from="' . ($from + $size) . '">Next →</button>' : '<span></span>';
+		echo '</div>';
+	}
+}
+
+//----------------------------------------------------------------------------------------
 // A map of the points (latitude and longitude pairs) in a part's text, from its pages'
 // spatialCoverage; each point lists the pages it is on, opening the page viewer at that
 // page ($viewer is the viewer's URL, or '' to link to BHL). Nothing if it has none.
@@ -1744,6 +1957,22 @@ function main()
 	if (isset($_GET['item']))
 	{
 		display_item((int)$_GET['item']);
+		exit(0);
+	}
+
+	// The map of points in the text, or (fragment) the list beside it for an area
+	if (isset($_GET['map']))
+	{
+		$query = isset($_GET['q']) ? trim($_GET['q']) : '';
+		if (isset($_GET['fragment']))
+		{
+			$from = isset($_GET['from']) ? max(0, (int)$_GET['from']) : 0;
+			display_map_results($query, isset($_GET['bbox']) ? parse_bbox($_GET['bbox']) : null, $from);
+		}
+		else
+		{
+			display_map($query);
+		}
 		exit(0);
 	}
 
