@@ -17,3 +17,7 @@ vendor/
 # Page sizes and word boxes from bhl-ocr-store (9 GB); keep only the docs
 bhl-ocr-store/*
 !bhl-ocr-store/*.md
+
+# BBEdit project: share the project file, not each person's settings, lock or worksheets
+*.bbprojectd/*
+!*.bbprojectd/project.bbprojectdata
