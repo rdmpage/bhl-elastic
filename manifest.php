@@ -290,11 +290,18 @@ function page_canvas($page, $seq, $sizes, $text = 'line')
 		);
 	}
 
-	// Coordinates in the page's text
+	// Coordinates and names in the page's text
 	if (isset($page->spatialCoverage))
 	{
 		$canvas->annotations[] = (object)array(
 			'id'   => site_url('iiif.php?page=' . $pageid . '&annotations=geo'),
+			'type' => 'AnnotationPage',
+		);
+	}
+	if (isset($page->mentions))
+	{
+		$canvas->annotations[] = (object)array(
+			'id'   => site_url('iiif.php?page=' . $pageid . '&annotations=names'),
 			'type' => 'AnnotationPage',
 		);
 	}
@@ -404,13 +411,12 @@ function page_annotations($pageid, $text = 'line')
 }
 
 //----------------------------------------------------------------------------------------
-// The latitude and longitude pairs in a page's text (found by geotag.php, stored in its
-// annotations in the index) as a IIIF AnnotationPage, or null if it has none. Each is a
-// tagging annotation whose body is the point, as a GeoJSON Feature (as in IIIF's
-// navPlace extension) labelled with the text, and whose target is the words' boxes on
-// the canvas, one per line, found by aligning the text with the OCR words; if they
-// cannot be found, the canvas, with the text quoted.
-function geo_annotations($pageid)
+// What tagging.php found in a page's text, of one type ("geo" or "name"), as a IIIF
+// AnnotationPage, or null if there is none. Each is a tagging annotation: $body($annotation)
+// gives its body, and its target is the words' boxes on the canvas, one per line, found
+// by aligning the text with the OCR words. If they cannot be found, the target is the
+// canvas with the text quoted, if $quote, otherwise the annotation is left out.
+function tag_annotations($pageid, $type, $path, $context, $body, $quote)
 {
 	global $config;
 
@@ -429,15 +435,15 @@ function geo_annotations($pageid)
 	$canvas_id = page_canvas_id($pageid);
 
 	$page = new stdclass;
-	$page->{'@context'} = array(NAVPLACE_CONTEXT, IIIF_CONTEXT);
-	$page->id    = site_url('iiif.php?page=' . (int)$pageid . '&annotations=geo');
+	$page->{'@context'} = $context;
+	$page->id    = site_url('iiif.php?page=' . (int)$pageid . '&annotations=' . $path);
 	$page->type  = 'AnnotationPage';
 	$page->items = array();
 
 	$n = 0;
 	foreach ($resp[1]->_source->annotations as $annotation)
 	{
-		if ($annotation->type != 'geo')
+		if ($annotation->type != $type)
 		{
 			continue;
 		}
@@ -449,6 +455,10 @@ function geo_annotations($pageid)
 		}
 		if (count($target) == 0)
 		{
+			if (!$quote)
+			{
+				continue;
+			}
 			$target = (object)array(
 				'type'     => 'SpecificResource',
 				'source'   => $canvas_id,
@@ -466,22 +476,87 @@ function geo_annotations($pageid)
 		}
 
 		$page->items[] = (object)array(
-			'id'         => $canvas_id . '/geo/' . ++$n,
+			'id'         => $canvas_id . '/' . $path . '/' . ++$n,
 			'type'       => 'Annotation',
 			'motivation' => 'tagging',
-			'body'       => (object)array(
-				'type'       => 'Feature',
-				'properties' => (object)array('label' => iiif_label($annotation->exact)),
-				'geometry'   => (object)array(
-					'type'        => 'Point',
-					'coordinates' => array($annotation->value->lon, $annotation->value->lat),
-				),
-			),
+			'body'       => $body($annotation),
 			'target'     => $target,
 		);
 	}
 
 	return count($page->items) > 0 ? $page : null;
+}
+
+//----------------------------------------------------------------------------------------
+// The latitude and longitude pairs in a page's text (found by geotag.php, stored in its
+// annotations in the index) as a IIIF AnnotationPage, or null if it has none. Each body
+// is the point, as a GeoJSON Feature (as in IIIF's navPlace extension) labelled with the
+// text. A pair whose words cannot be found on the image targets the canvas, quoted.
+function geo_annotations($pageid)
+{
+	return tag_annotations($pageid, 'geo', 'geo', array(NAVPLACE_CONTEXT, IIIF_CONTEXT), function ($annotation) {
+		return (object)array(
+			'type'       => 'Feature',
+			'properties' => (object)array('label' => iiif_label($annotation->exact)),
+			'geometry'   => (object)array(
+				'type'        => 'Point',
+				'coordinates' => array($annotation->value->lon, $annotation->value->lat),
+			),
+		);
+	}, true);
+}
+
+//----------------------------------------------------------------------------------------
+// The scientific names in a page's text (found by taxonfinder, see tagging.php) as a
+// IIIF AnnotationPage, or null if it has none. Each body is the name as read ("P.
+// saltator" after "Pomatomus" is "Pomatomus saltator"), a TextualBody with purpose
+// tagging; a name followed by a nomenclatural statement also
+// has a TextualBody with purpose classifying for each of its terms ("sp. nov.",
+// "syn. nov.", ...) and each doubt the author marks ("gen. inc."), and one whose value is "new name" if it is published as new here
+// (not, for example, "G. aus sp. nov.", a new name mentioned again). Names whose words cannot be found on the image are left out, as
+// there is nothing to show (they are still in the text).
+function name_annotations($pageid)
+{
+	return tag_annotations($pageid, 'name', 'names', IIIF_CONTEXT, function ($annotation) {
+		$bodies = array((object)array(
+			'type'    => 'TextualBody',
+			'purpose' => 'tagging',
+			'value'   => $annotation->value,
+		));
+		if (isset($annotation->statements))
+		{
+			foreach ($annotation->statements->terms as $term)
+			{
+				$bodies[] = (object)array(
+					'type'    => 'TextualBody',
+					'purpose' => 'classifying',
+					'value'   => $term,
+				);
+			}
+		}
+		// Doubts the author marks, e.g. "gen. inc." for "Sitala (?) jeromi"
+		if (isset($annotation->uncertainty))
+		{
+			foreach ($annotation->uncertainty as $doubt)
+			{
+				$bodies[] = (object)array(
+					'type'    => 'TextualBody',
+					'purpose' => 'classifying',
+					'value'   => $doubt->qualifier,
+				);
+			}
+		}
+		// Published as new here (see is_new_name() in tagging.php)
+		if (!empty($annotation->new))
+		{
+			$bodies[] = (object)array(
+				'type'    => 'TextualBody',
+				'purpose' => 'classifying',
+				'value'   => 'new name',
+			);
+		}
+		return $bodies;
+	}, false);
 }
 
 //----------------------------------------------------------------------------------------

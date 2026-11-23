@@ -163,7 +163,7 @@ function get_item($itemid)
 			),
 			'_source' => $type == 'part'
 				? array('seq', 'name', 'authors', 'container', 'tags', 'volume', 'issue', 'year', 'pages', 'doi', 'thumbnail')
-				: array('seq', 'name', 'tags', 'thumbnail', 'partid', 'locations'),
+				: array('seq', 'name', 'tags', 'thumbnail', 'partid', 'locations', 'names', 'new_names'),
 			'sort' => array(array('seq' => array('order' => 'asc', 'missing' => '_last'))),
 		);
 
@@ -241,10 +241,32 @@ function places_jsonld($locations)
 }
 
 //----------------------------------------------------------------------------------------
+// Give $work the scientific names in $source (a page, part or item document; see
+// tagging.php) as Taxa: mentions, every name in its text, and about, the names it
+// publishes as new (sp. nov., comb. nov., nom. nov., ...), which are what a work that
+// describes a taxon is about. Names are as taxonfinder reads them, not checked against a
+// list of names.
+function add_taxa_jsonld($work, $source)
+{
+	$taxa = function ($names) {
+		$list = array();
+		foreach ($names as $name)
+		{
+			$list[] = (object)array('type' => 'Taxon', 'name' => $name);
+		}
+		return $list;
+	};
+
+	if (isset($source->new_names)) { $work->about    = $taxa($source->new_names); }
+	if (isset($source->names))     { $work->mentions = $taxa($source->names); }
+}
+
+//----------------------------------------------------------------------------------------
 // A page search hit as a ListItem of an item or article: the page is a CreativeWork
 // named by its printed page label, its genre the page types BHL gives it, and isPartOf
 // the articles it is in, if any, and spatialCoverage the points (latitude and longitude
-// pairs) in its text, if any (see geotag.php). Its position is the page's sequence
+// pairs) in its text, if any (see geotag.php), and mentions and about the names in it
+// (see add_taxa_jsonld()). Its position is the page's sequence
 // number in the item, or $position if it has none.
 function page_list_element($hit, $position)
 {
@@ -256,6 +278,7 @@ function page_list_element($hit, $position)
 	if (isset($hit->_source->thumbnail)) { $page->thumbnailUrl = $hit->_source->thumbnail; }
 	if (isset($hit->_source->tags))      { $page->genre = $hit->_source->tags; }
 	if (isset($hit->_source->locations)) { $page->spatialCoverage = places_jsonld($hit->_source->locations); }
+	add_taxa_jsonld($page, $hit->_source);
 
 	if (isset($hit->_source->partid))
 	{
@@ -283,9 +306,11 @@ function page_list_element($hit, $position)
 // The scanned item (PublicationVolume) that holds it is added to isPartOf, so the
 // article is also in the item's hasPart (see get_item()). Its pages are an ItemList,
 // in scan order, as for an item. spatialCoverage is the points (latitude and longitude
-// pairs) in its pages' text, as are each page's.
+// pairs) in its pages' text, as are each page's; mentions is the names in its pages'
+// text, and about those it publishes as new (see add_taxa_jsonld()). All three are
+// merged from its pages.
 //
-// Room for more: works it cites (citation), works citing it, taxa it mentions.
+// Room for more: works it cites (citation), works citing it.
 function get_part($partid)
 {
 	global $config;
@@ -294,7 +319,7 @@ function get_part($partid)
 
 	$id = 'part_' . (int)$partid;
 
-	$docs = fetch_docs($elastic, array($id), array('itemid', 'titleid', 'seq', 'name', 'authors', 'container', 'tags', 'volume', 'issue', 'year', 'pages', 'doi', 'thumbnail', 'locations'));
+	$docs = fetch_docs($elastic, array($id), array('itemid', 'titleid', 'seq', 'name', 'authors', 'container', 'tags', 'volume', 'issue', 'year', 'pages', 'doi', 'thumbnail'));
 
 	if (!isset($docs[$id]))
 	{
@@ -310,12 +335,6 @@ function get_part($partid)
 
 	$work = part_to_jsonld($id, $part, $titleids, $others);
 	$work = (object)array_merge(array('@context' => create_context()), (array)$work);
-
-	// The points in its pages' text
-	if (isset($part->locations))
-	{
-		$work->spatialCoverage = places_jsonld($part->locations);
-	}
 
 	if ($itemid && isset($others[$itemid]))
 	{
@@ -335,7 +354,7 @@ function get_part($partid)
 				)
 			)
 		),
-		'_source' => array('seq', 'name', 'tags', 'thumbnail', 'partid', 'locations'),
+		'_source' => array('seq', 'name', 'tags', 'thumbnail', 'partid', 'locations', 'names', 'new_names'),
 		'sort' => array(array('seq' => array('order' => 'asc', 'missing' => '_last'))),
 	);
 
@@ -350,10 +369,38 @@ function get_part($partid)
 	$work->numberOfItems = count($resp[1]->hits->hits);
 	$work->itemListElement = array();
 
+	// The points and names in its pages' text, merged here rather than read from the
+	// part's own fields (filled in by load-annotations.php --rollup, for searching
+	// articles), so the page is right even if the rollup has not been run since the
+	// pages were tagged
+	$merged = array('locations' => array(), 'names' => array(), 'new_names' => array());
+
 	foreach ($resp[1]->hits->hits as $hit)
 	{
 		$work->itemListElement[] = page_list_element($hit, count($work->itemListElement) + 1);
+
+		foreach (array_keys($merged) as $field)
+		{
+			foreach (isset($hit->_source->{$field}) ? $hit->_source->{$field} : array() as $value)
+			{
+				$merged[$field][is_object($value) ? $value->lat . ',' . $value->lon : $value] = $value;
+			}
+		}
 	}
+
+	$source = new stdclass;
+	foreach ($merged as $field => $values)
+	{
+		if (count($values) > 0)
+		{
+			$source->{$field} = array_values($values);
+		}
+	}
+	if (isset($source->locations))
+	{
+		$work->spatialCoverage = places_jsonld($source->locations);
+	}
+	add_taxa_jsonld($work, $source);
 
 	return $work;
 }

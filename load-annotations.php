@@ -1,27 +1,37 @@
 <?php
 
-// load-geo.php
+// load-annotations.php
 //
-// Add latitude and longitude pairs found in page text (see geotag.php) to the index.
+// Add what is found in page text (see tagging.php: latitude and longitude pairs, and
+// scientific names) to the pages already in the index, and roll it up to parts and
+// items.
 //
-//   php load-geo.php                 tag pages, then roll up to parts and items
-//   php load-geo.php --tag           only tag pages, from their text in the index
-//   php load-geo.php --rollup        only roll up
-//   php load-geo.php --tag --limit 100000 --dry-run
+//   php load-annotations.php                     tag pages, then roll up
+//   php load-annotations.php --tag               only tag pages
+//   php load-annotations.php --rollup            only roll up
+//   php load-annotations.php --tag --slice 0/4   a quarter of the pages; run 0/4 to 3/4
+//                                                side by side, then --rollup
+//   php load-annotations.php --tag --limit 10000 --dry-run
+//   php load-annotations.php --item 309167       re-tag one item's pages and roll up
+//                                                (after taxonfinder changes, to check)
 //
 // Options:
-//   --tag       give each page with pairs in its text locations (its distinct points,
-//               a geo_point list) and annotations (each pair, quoted, with where it is in
-//               the text and its point); a page that no longer has any loses them. Only
-//               pages that change are updated, so a re-run is cheap.
-//   --rollup    give each part and item the distinct locations of its pages, and take
-//               them from any that no longer have any. Run after load-metadata.php,
-//               which replaces part and item documents.
-//   --limit N   tag at most N pages (for trying it out)
-//   --dry-run   count, but change nothing
+//   --tag        give each page with text its locations, names, new_names and
+//                annotations (see tagging.php), and take them from pages that no
+//                longer have any. Only pages that change are updated, so a re-run is
+//                cheap.
+//   --rollup     give each part and item the distinct locations, names and new_names
+//                of its pages, and take them from any that no longer have any. Run
+//                after load-metadata.php, which replaces part and item documents.
+//   --slice i/n  tag only slice i of n of the pages (Elasticsearch sliced search), to
+//                run several at once
+//   --item N     tag only the pages of item N (BHL's number); with no --tag or --rollup,
+//                also roll up (which is always the whole index)
+//   --limit N    tag at most N pages (for trying it out)
+//   --dry-run    count, but change nothing
 //
-// load-ocr.php tags pages as it loads them, so this is for an index loaded before
-// that, or after geotag.php changes; --rollup is needed after every load.
+// load-ocr.php tags pages as it loads them, so --tag is for an index loaded before
+// that, or after geotag.php or taxonfinder changes; --rollup is needed after every load.
 //
 // Pages are read from a point in time, so the updates made while reading do not move
 // pages in or out of what is read.
@@ -33,14 +43,20 @@ if (PHP_SAPI != 'cli')
 }
 
 error_reporting(E_ALL);
+ini_set('memory_limit', '2G');
 
 require_once (dirname(__FILE__) . '/config.inc.php');
 require_once (dirname(__FILE__) . '/elastic.php');
-require_once (dirname(__FILE__) . '/geotag.php');
+require_once (dirname(__FILE__) . '/tagging.php');
+
+// The fields tagging adds to pages; all but annotations are rolled up
+define('TAG_FIELDS', 'locations,names,new_names,annotations');
+define('ROLLUP_FIELDS', 'locations,names,new_names');
 
 //----------------------------------------------------------------------------------------
-// Call $callback with each batch of hits for $query, read from a point in time
-function scan($elastic, $query, $source, $callback, $size = 2000)
+// Call $callback with each batch of hits for $query, read from a point in time;
+// $slice is array(i, n) or null
+function scan($elastic, $query, $source, $callback, $size = 1000, $slice = null)
 {
 	// See recent changes (the index refreshes only every 30 s)
 	$elastic->send('POST', '_refresh');
@@ -65,6 +81,10 @@ function scan($elastic, $query, $source, $callback, $size = 2000)
 				'pit'     => array('id' => $pit, 'keep_alive' => '10m'),
 				'sort'    => array(array('_shard_doc' => 'asc')),
 			);
+			if ($slice)
+			{
+				$body['slice'] = array('id' => $slice[0], 'max' => $slice[1]);
+			}
 			if ($after)
 			{
 				$body['search_after'] = $after;
@@ -108,14 +128,15 @@ function send_updates($elastic, $updates, $dry_run)
 	foreach ($updates as $id => $fields)
 	{
 		$lines[] = json_encode(array('update' => array('_id' => $id)));
-		$lines[] = json_encode(array('doc' => $fields), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+		// OCR can hold bytes that are not UTF-8; they become U+FFFD rather than failing
+		$lines[] = json_encode(array('doc' => $fields), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
 	}
 
 	list($code, $response) = $elastic->send('POST', '_bulk', implode("\n", $lines) . "\n", 'application/x-ndjson');
 
 	if ($code != 200 || !$response)
 	{
-		throw new Exception('Bulk request failed with HTTP ' . $code);
+		throw new Exception('Bulk request failed with HTTP ' . $code . ': ' . substr(json_encode($response), 0, 1000));
 	}
 
 	$missing = 0;
@@ -162,47 +183,50 @@ function canonical_json($value)
 }
 
 //----------------------------------------------------------------------------------------
-// Tag every page that has text
-function tag_pages($elastic, $limit, $dry_run)
+// Tag every page that has text (or one slice of them)
+function tag_pages($elastic, $limit, $dry_run, $slice, $itemid = 0)
 {
-	$stats = array('pages' => 0, 'with_geo' => 0, 'pairs' => 0, 'added' => 0, 'changed' => 0, 'removed' => 0, 'unchanged' => 0);
+	$stats = array('pages' => 0, 'with_points' => 0, 'with_names' => 0, 'names' => 0, 'with_new_names' => 0,
+		'changed' => 0, 'unchanged' => 0);
 	$started = microtime(true);
+	$fields  = explode(',', TAG_FIELDS);
 
 	$query = array('bool' => array('filter' => array(
 		array('term' => array('type' => 'page')),
 		array('exists' => array('field' => 'text')),
 	)));
+	if ($itemid)
+	{
+		$query['bool']['filter'][] = array('term' => array('itemid' => 'item_' . $itemid));
+	}
 
-	scan($elastic, $query, array('text', 'locations', 'annotations'), function ($hits) use ($elastic, $limit, $dry_run, &$stats, $started) {
+	scan($elastic, $query, array_merge(array('text'), $fields), function ($hits) use ($elastic, $limit, $dry_run, $fields, &$stats, $started) {
 		$updates = array();
 
 		foreach ($hits as $hit)
 		{
 			$stats['pages']++;
 
-			$geo = page_geo($hit->_source->text);
-			$had = isset($hit->_source->locations);
+			$new = page_fields($hit->_source->text);
 
-			if ($geo)
+			if ($new['locations'])   { $stats['with_points']++; }
+			if ($new['names'])       { $stats['with_names']++; $stats['names'] += count($new['names']); }
+			if ($new['new_names'])   { $stats['with_new_names']++; }
+
+			$old = array();
+			foreach ($fields as $field)
 			{
-				$stats['with_geo']++;
-				$stats['pairs'] += count($geo['annotations']);
-
-				$old = $had ? canonical_json(array('locations' => $hit->_source->locations, 'annotations' => isset($hit->_source->annotations) ? $hit->_source->annotations : null)) : null;
-				if ($old == canonical_json($geo))
-				{
-					$stats['unchanged']++;
-				}
-				else
-				{
-					$stats[$had ? 'changed' : 'added']++;
-					$updates[$hit->_id] = $geo;
-				}
+				$old[$field] = isset($hit->_source->{$field}) ? $hit->_source->{$field} : null;
 			}
-			elseif ($had)
+
+			if (canonical_json($old) == canonical_json($new))
 			{
-				$stats['removed']++;
-				$updates[$hit->_id] = array('locations' => null, 'annotations' => null);
+				$stats['unchanged']++;
+			}
+			else
+			{
+				$stats['changed']++;
+				$updates[$hit->_id] = $new;
 			}
 
 			if ($limit && $stats['pages'] >= $limit)
@@ -213,75 +237,99 @@ function tag_pages($elastic, $limit, $dry_run)
 
 		send_updates($elastic, $updates, $dry_run);
 
-		if ($stats['pages'] % 100000 < count($hits))
+		if ($stats['pages'] % 50000 < count($hits))
 		{
-			fwrite(STDERR, sprintf("%s pages, %s with pairs, %.1f min\n",
-				number_format($stats['pages']), number_format($stats['with_geo']), (microtime(true) - $started) / 60));
+			fwrite(STDERR, sprintf("%s pages, %s with names, %.1f min\n",
+				number_format($stats['pages']), number_format($stats['with_names']), (microtime(true) - $started) / 60));
 		}
 
 		return !($limit && $stats['pages'] >= $limit);
-	});
+	}, 1000, $slice);
+
+	$stats['minutes'] = round((microtime(true) - $started) / 60, 1);
 
 	return $stats;
 }
 
 //----------------------------------------------------------------------------------------
-// Give parts and items the distinct locations of their pages
+// Give parts and items the distinct locations, names and new_names of their pages
 function rollup($elastic, $dry_run)
 {
-	// Points by part and by item
-	$points = array();
+	$fields = explode(',', ROLLUP_FIELDS);
 
-	$query = array('bool' => array('filter' => array(
-		array('term' => array('type' => 'page')),
-		array('exists' => array('field' => 'locations')),
-	)));
+	// Values by part and by item: owner => field => key => value
+	$values = array();
 
-	scan($elastic, $query, array('locations', 'partid', 'itemid'), function ($hits) use (&$points) {
+	$should = array();
+	foreach ($fields as $field)
+	{
+		$should[] = array('exists' => array('field' => $field));
+	}
+	$query = array('bool' => array(
+		'filter' => array(array('term' => array('type' => 'page'))),
+		'should' => $should,
+		'minimum_should_match' => 1,
+	));
+
+	scan($elastic, $query, array_merge($fields, array('partid', 'itemid')), function ($hits) use (&$values, $fields) {
 		foreach ($hits as $hit)
 		{
 			$owners = isset($hit->_source->partid) ? $hit->_source->partid : array();
 			$owners[] = $hit->_source->itemid;
 
-			foreach ($owners as $owner)
+			foreach ($fields as $field)
 			{
-				foreach ($hit->_source->locations as $point)
+				if (!isset($hit->_source->{$field}))
 				{
-					$points[$owner][$point->lat . ',' . $point->lon] = $point;
+					continue;
+				}
+				foreach ($hit->_source->{$field} as $value)
+				{
+					$key = is_object($value) ? $value->lat . ',' . $value->lon : $value;
+					foreach ($owners as $owner)
+					{
+						$values[$owner][$field][$key] = $value;
+					}
 				}
 			}
 		}
-	});
+	}, 5000);
 
-	// Parts and items that have locations now, to take them from any that should not
+	// Parts and items that have any of the fields now, to take them from any that
+	// should not
 	$stale = array();
 
 	$query = array('bool' => array(
-		'filter' => array(
-			array('terms' => array('type' => array('part', 'item'))),
-			array('exists' => array('field' => 'locations')),
-		),
+		'filter' => array(array('terms' => array('type' => array('part', 'item')))),
+		'should' => $should,
+		'minimum_should_match' => 1,
 	));
 
-	scan($elastic, $query, false, function ($hits) use (&$stale, $points) {
+	scan($elastic, $query, false, function ($hits) use (&$stale, $values) {
 		foreach ($hits as $hit)
 		{
-			if (!isset($points[$hit->_id]))
+			if (!isset($values[$hit->_id]))
 			{
 				$stale[] = $hit->_id;
 			}
 		}
-	});
+	}, 5000);
 
 	$stats = array('parts' => 0, 'items' => 0, 'missing' => 0, 'removed' => count($stale));
 
 	$updates = array();
-	foreach ($points as $id => $list)
+	foreach ($values as $id => $by_field)
 	{
 		$stats[strpos($id, 'part_') === 0 ? 'parts' : 'items']++;
-		$updates[$id] = array('locations' => array_values($list));
 
-		if (count($updates) == 500)
+		$update = array();
+		foreach ($fields as $field)
+		{
+			$update[$field] = isset($by_field[$field]) ? array_values($by_field[$field]) : null;
+		}
+		$updates[$id] = $update;
+
+		if (count($updates) == 200)
 		{
 			$stats['missing'] += send_updates($elastic, $updates, $dry_run);
 			$updates = array();
@@ -289,7 +337,7 @@ function rollup($elastic, $dry_run)
 	}
 	foreach ($stale as $id)
 	{
-		$updates[$id] = array('locations' => null);
+		$updates[$id] = array_fill_keys($fields, null);
 	}
 	$stats['missing'] += send_updates($elastic, $updates, $dry_run);
 
@@ -298,30 +346,44 @@ function rollup($elastic, $dry_run)
 
 //----------------------------------------------------------------------------------------
 
-$options = getopt('', array('tag', 'rollup', 'limit:', 'dry-run'));
+$options = getopt('', array('tag', 'rollup', 'slice:', 'limit:', 'dry-run', 'item:'));
 
 $do_tag    = isset($options['tag']) || !isset($options['rollup']);
 $do_rollup = isset($options['rollup']) || !isset($options['tag']);
 $limit     = isset($options['limit']) ? (int)$options['limit'] : 0;
 $dry_run   = isset($options['dry-run']);
+$itemid    = isset($options['item']) ? (int)$options['item'] : 0;
+
+$slice = null;
+if (isset($options['slice']))
+{
+	if (!preg_match('/^(\d+)\/(\d+)$/', $options['slice'], $m) || $m[1] >= $m[2])
+	{
+		fwrite(STDERR, "--slice is i/n, e.g. 0/4\n");
+		exit(1);
+	}
+	$slice = array((int)$m[1], (int)$m[2]);
+}
 
 $elastic = new ElasticSearch($config['elastic_options']);
 
-// The annotations field, if the index was made before it was in index.json
+// Fields added to index.json since the index was made
 if (!$dry_run)
 {
 	$resp = $elastic->send('PUT', '_mapping', json_encode(array('properties' => array(
+		'names'       => array('type' => 'keyword'),
+		'new_names'   => array('type' => 'keyword'),
 		'annotations' => array('type' => 'object', 'enabled' => false),
 	))));
 	if ($resp[0] != 200)
 	{
-		throw new Exception('Could not add annotations to the mapping: ' . json_encode($resp[1]));
+		throw new Exception('Could not add to the mapping: ' . json_encode($resp[1]));
 	}
 }
 
 if ($do_tag)
 {
-	echo 'Pages: ' . json_encode(tag_pages($elastic, $limit, $dry_run)) . "\n";
+	echo 'Pages: ' . json_encode(tag_pages($elastic, $limit, $dry_run, $slice, $itemid)) . "\n";
 }
 
 if ($do_rollup)

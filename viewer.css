@@ -24,6 +24,10 @@
 	--viewer-place: #059669;
 	--viewer-place-bg: rgba(16, 185, 129, 0.12);
 	--viewer-place-hover: rgba(16, 185, 129, 0.3);
+	--viewer-name: rgba(124, 58, 237, 0.45);
+	--viewer-name-new: #7c3aed;
+	--viewer-name-bg: rgba(139, 92, 246, 0.12);
+	--viewer-name-hover: rgba(139, 92, 246, 0.28);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -463,6 +467,39 @@ body {
 .viewer-places a:hover,
 .viewer-places a:focus-visible {
 	background-color: var(--viewer-place-hover);
+	outline: none;
+}
+
+/* Scientific names in the text (see draw_names() in viewer.js), beneath the places: a
+   faint underline for a name, an outline for one published as new; each searches for
+   the name */
+.viewer-names {
+	position: absolute;
+	inset: 0;
+	z-index: 1;
+	pointer-events: none;
+}
+
+.viewer-names a {
+	position: absolute;
+	box-sizing: content-box;
+	margin: 0 0 -2px 0;
+	border-bottom: 2px solid var(--viewer-name);
+	pointer-events: auto;
+	cursor: pointer;
+}
+
+.viewer-names a.viewer-name-new {
+	margin: -3px 0 0 -3px;
+	padding: 1px;
+	border: 2px solid var(--viewer-name-new);
+	border-radius: 3px;
+	background-color: var(--viewer-name-bg);
+}
+
+.viewer-names a:hover,
+.viewer-names a:focus-visible {
+	background-color: var(--viewer-name-hover);
 	outline: none;
 }
 

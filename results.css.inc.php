@@ -713,6 +713,36 @@
 	background-color: var(--thumbnail-bg);
 }
 
+/* the scientific names in an article's text */
+.name-list {
+	columns: 16em auto;
+	column-gap: 2em;
+	margin: 0.5em 0 1em;
+	padding: 0;
+	list-style: none;
+}
+
+.name-list li {
+	break-inside: avoid;
+	padding: 0.1em 0;
+	font-style: italic;
+}
+
+.name-pages {
+	font-style: normal;
+	font-size: 0.875em;
+	color: var(--muted-text);
+}
+
+.name-list-new {
+	columns: 22em auto;
+}
+
+.name-details summary {
+	cursor: pointer;
+	margin: 0.5em 0;
+}
+
 /* the map of points in the text: the map beside the list of what is in view */
 .map-layout {
 	display: grid;

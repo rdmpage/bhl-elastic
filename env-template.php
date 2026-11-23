@@ -9,4 +9,7 @@ putenv('ELASTIC_INDEX=bhl');
 putenv('ELASTIC_USERNAME=');
 putenv('ELASTIC_PASSWORD=');
 
+// Where taxonfinder-php is (for loading names; see tagging.php)
+// putenv('TAXONFINDER=/path/to/taxonfinder-php');
+
 ?>

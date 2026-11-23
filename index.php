@@ -1482,6 +1482,8 @@ function display_part($partid)
 
 	display_part_map($part, $viewer);
 
+	display_part_names($part, $viewer);
+
 	display_cite($partid);
 
 	if ($part->numberOfItems > 0)
@@ -1769,6 +1771,71 @@ function display_map_results($q, $bbox, $from, $near = false)
 		echo $from + $size < $n ? '<button type="button" data-from="' . ($from + $size) . '">Next →</button>' : '<span></span>';
 		echo '</div>';
 	}
+}
+
+//----------------------------------------------------------------------------------------
+// The scientific names in an article's text (its about and mentions, see
+// add_taxa_jsonld() in records.php): those it publishes as new, each with the pages it
+// is new on, then, folded away, every name it mentions. Each name searches for itself.
+function display_part_names($part, $viewer)
+{
+	if (!isset($part->mentions))
+	{
+		return;
+	}
+
+	$search = function ($name) {
+		return '<a href="?q=' . htmlspecialchars(rawurlencode($name)) . '">' . htmlspecialchars($name) . '</a>';
+	};
+
+	echo '<h2>Names</h2>';
+
+	if (isset($part->about))
+	{
+		// The pages each new name is new on
+		$pages = array();
+		foreach ($part->itemListElement as $element)
+		{
+			$page = $element->item;
+			foreach (isset($page->about) ? $page->about : array() as $taxon)
+			{
+				$href  = $viewer ? viewer_url(manifest_path($part->id), $page->id) : $page->id;
+				$label = isset($page->name) ? preg_replace('/^Page /', 'p. ', $page->name) : '[' . $element->position . ']';
+				$pages[$taxon->name][] = '<a href="' . htmlspecialchars($href) . '">' . htmlspecialchars($label) . '</a>';
+			}
+		}
+
+		echo '<p class="hit-meta">' . number_format(count($part->about)) . ' name' . (count($part->about) == 1 ? '' : 's')
+			. ' marked as new in the text (sp. nov., gen. nov., comb. nov., nom. nov. and so on). Found by machine, so check them against the page.</p>';
+		echo '<ul class="name-list name-list-new">';
+		foreach ($part->about as $taxon)
+		{
+			echo '<li>' . $search($taxon->name);
+			if (isset($pages[$taxon->name]))
+			{
+				echo ' <span class="name-pages">' . implode(', ', array_unique($pages[$taxon->name])) . '</span>';
+			}
+			echo '</li>';
+		}
+		echo '</ul>';
+	}
+
+	$names = array();
+	foreach ($part->mentions as $taxon)
+	{
+		$names[] = $taxon->name;
+	}
+	sort($names);
+
+	echo '<details class="name-details"' . (isset($part->about) ? '' : ' open') . '>';
+	echo '<summary>' . number_format(count($names)) . ' name' . (count($names) == 1 ? '' : 's') . ' mentioned</summary>';
+	echo '<ul class="name-list">';
+	foreach ($names as $name)
+	{
+		echo '<li>' . $search($name) . '</li>';
+	}
+	echo '</ul>';
+	echo '</details>';
 }
 
 //----------------------------------------------------------------------------------------

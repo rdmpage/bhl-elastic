@@ -29,8 +29,8 @@
 //
 // part/ entries are counted and skipped: page-to-part membership comes from partpage.
 //
-// Pages with latitude and longitude pairs in their text get locations and annotations
-// (see geotag.php). Parts and items get their pages' locations from load-geo.php
+// Pages get what is found in their text: latitude and longitude pairs and scientific
+// names (see tagging.php). Parts and items get their pages' from load-annotations.php
 // --rollup, run after load-metadata.php, which replaces their documents.
 
 // Command line only
@@ -43,7 +43,7 @@ require_once (dirname(__FILE__) . '/sqlite.php');
 require_once (dirname(__FILE__) . '/elastic.php');
 require_once (dirname(__FILE__) . '/ocr.php');
 require_once (dirname(__FILE__) . '/bhl.php');
-require_once (dirname(__FILE__) . '/geotag.php');
+require_once (dirname(__FILE__) . '/tagging.php');
 
 //----------------------------------------------------------------------------------------
 // Page documents for one item. $ocr maps PageID => raw OCR text.
@@ -192,14 +192,17 @@ function item_page_docs($stmts, $itemid, $ocr, &$stats)
 			{
 				$doc->text = $text;
 
-				// Latitude and longitude pairs in the text (see geotag.php)
-				$geo = page_geo($text);
-				if ($geo)
+				// Latitude and longitude pairs and scientific names in the text (see
+				// tagging.php)
+				foreach (page_fields($text) as $field => $value)
 				{
-					$doc->locations   = $geo['locations'];
-					$doc->annotations = $geo['annotations'];
-					$stats['pages_geo']++;
+					if ($value !== null)
+					{
+						$doc->{$field} = $value;
+					}
 				}
+				if (isset($doc->locations)) { $stats['pages_geo']++; }
+				if (isset($doc->names))     { $stats['pages_names']++; }
 			}
 		}
 
@@ -270,6 +273,7 @@ $stats = array(
 	'docs'              => 0,
 	'pages_empty'       => 0,
 	'pages_geo'         => 0,
+	'pages_names'       => 0,
 	'pages_no_ocr'      => 0,
 	'pages_no_metadata' => 0,
 	'part_files'        => 0,

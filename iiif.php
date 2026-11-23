@@ -7,6 +7,7 @@
 //   iiif.php?page=57579635   (a page's text, line by line, as an AnnotationPage)
 //   iiif.php?page=57579637&annotations=geo   (the latitude and longitude pairs in a
 //                            page's text, as an AnnotationPage)
+//   iiif.php?page=57579637&annotations=names (the scientific names in a page's text)
 //
 // text=word gives text word by word (in a manifest, its canvases link to their pages'
 // words), text=page each page's text as indexed, without boxes (what a page with no
@@ -41,6 +42,11 @@ function main()
 		{
 			$page = geo_annotations((int)$_GET['page']);
 			$page ? send_manifest(200, $page) : send_manifest(404, array('error' => 'No coordinates on page'));
+		}
+		elseif (isset($_GET['page']) && isset($_GET['annotations']) && $_GET['annotations'] == 'names')
+		{
+			$page = name_annotations((int)$_GET['page']);
+			$page ? send_manifest(200, $page) : send_manifest(404, array('error' => 'No names on page'));
 		}
 		elseif (isset($_GET['page']))
 		{

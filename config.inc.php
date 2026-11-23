@@ -44,6 +44,13 @@ $config['bhl_images'] = 'https://bhl-open-data.s3.amazonaws.com';
 // when first needed (see words_pdo() in iiif.php).
 $config['words_db'] = dirname(__FILE__) . '/bhl-ocr-store/bhl-light-words.db';
 
+// Scientific names-----------------------------------------------------------------------
+// taxonfinder-php (https://github.com/rdmpage/taxonfinder-php), which finds names and
+// statements such as "sp. nov." in text; only the loaders need it (see tagging.php).
+// TAXONFINDER (in env.php) says where it is.
+$config['taxonfinder'] = getenv('TAXONFINDER') ? getenv('TAXONFINDER')
+	: (getenv('HOME') ? getenv('HOME') : '') . '/Development/taxonfinder-php';
+
 // Database-------------------------------------------------------------------------------
 $config['bhldb']    = dirname(__FILE__) . '/bhl.db';
 

@@ -315,11 +315,17 @@
 		})).then(function (annotation_pages) {
 			var items = [];
 			var places = [];
+			var names = [];
 			annotation_pages.forEach(function (annotation_page) {
 				as_array(annotation_page.items).forEach(function (annotation) {
 					var place = annotation_place(annotation);
 					if (place) {
 						places.push(place);
+						return;
+					}
+					var name = annotation_name(annotation);
+					if (name) {
+						names.push(name);
 						return;
 					}
 					if (annotation.motivation && annotation.motivation !== 'supplementing') {
@@ -338,6 +344,8 @@
 			page.text_unplaced = unplaced.join('\n\n');
 			page.text_loading = false;
 			page.places = places;
+			page.names = names;
+			draw_names(page);
 			draw_places(page);
 			if (page.state === 'full' || page.loading) {
 				draw_text(page);
@@ -368,6 +376,72 @@
 			}
 		}
 		return null;
+	}
+
+	// A scientific name that an annotation tags its target with: { boxes, name, terms,
+	// is_new }, if it has a TextualBody with purpose tagging (as iiif.php?page=N&
+	// annotations=names gives), otherwise null. terms are its bodies with purpose
+	// classifying, the nomenclatural statements after it ("sp. nov.", "syn. nov."...);
+	// is_new is whether it is published as new here, a classifying body "new name" (not
+	// every "nov." is: syn. nov. publishes no name, and "G. aus sp. nov." is a new name
+	// mentioned again)
+	function annotation_name(annotation) {
+		if (annotation.motivation !== 'tagging') {
+			return null;
+		}
+		var name = null;
+		var terms = [];
+		var is_new = false;
+		as_array(annotation.body).forEach(function (body) {
+			if (body && body.type === 'TextualBody' && typeof body.value === 'string') {
+				if (body.purpose === 'tagging' && name === null) {
+					name = body.value;
+				} else if (body.purpose === 'classifying' && body.value === 'new name') {
+					is_new = true;
+				} else if (body.purpose === 'classifying') {
+					terms.push(body.value);
+				}
+			}
+		});
+		if (name === null) {
+			return null;
+		}
+		return {
+			boxes: as_array(annotation.target).map(target_box).filter(Boolean),
+			name: name,
+			terms: terms,
+			is_new: is_new
+		};
+	}
+
+	// Mark the names on a page, beneath the places: new names outlined, others
+	// underlined faintly; each searches the index for the name
+	function draw_names(page) {
+		if (page.names_el || !page.names || page.names.length === 0 || !page.width || !page.height) {
+			return;
+		}
+		var layer = document.createElement('div');
+		layer.className = 'viewer-names';
+		page.names.forEach(function (name) {
+			var title = name.name + (name.terms.length ? ' (' + name.terms.join(', ') + ')' : '') + ': search for this name';
+			var href = './?q=' + encodeURIComponent(name.name);
+			name.boxes.forEach(function (box) {
+				var a = document.createElement('a');
+				a.href = href;
+				a.title = title;
+				a.setAttribute('aria-label', title);
+				if (name.is_new) {
+					a.className = 'viewer-name-new';
+				}
+				a.style.left = (box[0] / page.width * 100) + '%';
+				a.style.top = (box[1] / page.height * 100) + '%';
+				a.style.width = (box[2] / page.width * 100) + '%';
+				a.style.height = (box[3] / page.height * 100) + '%';
+				layer.appendChild(a);
+			});
+		});
+		page.names_el = layer;
+		page.el.appendChild(layer);
 	}
 
 	// "24.3667° N, 110.9667° W"
