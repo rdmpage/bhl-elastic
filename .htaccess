@@ -6,11 +6,11 @@
 Options -Indexes
 
 # Folders of data, git, libraries and tests
-RedirectMatch 404 /(\.git|bhldata|bhlocr|bhl-ocr-store|cache|vendor|testsets)(/|$)
+RedirectMatch 404 /(\.git|bhldata|bhlocr|bhl-ocr-store|cache|vendor|testsets|[^/]+\.bbprojectd)(/|$)
 
 # Databases, data files, requests saved from an HTTP client, local settings
 RedirectMatch 404 \.(db|db-shm|db-wal|db-journal|sqlite|sql|ndjson|tsv|checkpoint|request|lock)$
 RedirectMatch 404 /(\.DS_Store|\.gitignore|env\.php|env-template\.php|composer\.json|couchdb-items-titles\.json|index\.json)$
 
 # Command-line scripts
-RedirectMatch 404 /(extract-items|import|load-annotations|load-metadata|load-ocr|test-align|test-geotag|test-jsonld|test-queries)\.php$
+RedirectMatch 404 /(extract-items|import|layout-sample|load-annotations|load-metadata|load-ocr|test-align|test-geotag|test-jsonld|test-queries)\.php$

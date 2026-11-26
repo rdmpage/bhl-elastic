@@ -21,3 +21,7 @@ bhl-ocr-store/*
 # BBEdit project: share the project file, not each person's settings, lock or worksheets
 *.bbprojectd/*
 !*.bbprojectd/project.bbprojectdata
+
+# Page images for layout detection (testsets/layout/pages.tsv lists them, and
+# layout-sample.php --images gets them again)
+testsets/layout/images/
