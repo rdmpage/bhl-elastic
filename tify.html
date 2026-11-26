@@ -1,0 +1,19 @@
+<html>
+<head>
+<link rel="stylesheet" href="./tify/tify.css">
+
+</head>
+<body>
+<div id="tify" style="height: 100%"></div>
+
+<script type="module">
+import Tify from './tify/tify.js'
+
+new Tify({
+  container: '#tify',
+  manifestUrl: 'http://localhost:4000/iiif.php?item=61794'
+})
+</script>
+
+</body>
+</html>
