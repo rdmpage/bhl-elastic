@@ -2039,6 +2039,55 @@ JS;
 }
 
 //----------------------------------------------------------------------------------------
+// ?page=PageID, the stable link to a BHL page (page_link()). It redirects to the page in
+// its item's viewer if we have the item's page images, otherwise to the item's page here,
+// otherwise says we don't have it. A redirect, not a page of its own, so the link stays
+// the same when where we show the page changes (e.g. when an item gets its OCR).
+function resolve_page($pageid)
+{
+	global $config;
+
+	$itemid = 0;
+
+	// Pages we have images and OCR for (one item per page)
+	try
+	{
+		$stmt = words_pdo()->prepare('SELECT ItemID FROM page WHERE PageID = ?');
+		$stmt->execute(array($pageid));
+		$itemid = (int)$stmt->fetchColumn();
+	}
+	catch (Exception $e)
+	{
+		// No page sizes, so no viewer
+	}
+
+	if ($itemid && has_manifest($itemid))
+	{
+		header('Location: ' . viewer_url('iiif.php?item=' . $itemid . '&text=word',
+			'https://www.biodiversitylibrary.org/page/' . $pageid), true, 302);
+		return;
+	}
+
+	// Otherwise the item's page here, if we have the item
+	if (!$itemid && $config['bhlpdo'])
+	{
+		$stmt = $config['bhlpdo']->prepare('SELECT ItemID FROM page WHERE PageID = ? LIMIT 1');
+		$stmt->execute(array($pageid));
+		$itemid = (int)$stmt->fetchColumn();
+	}
+
+	if ($itemid && get_item($itemid))
+	{
+		header('Location: ?item=' . $itemid, true, 302);
+		return;
+	}
+
+	http_response_code(404);
+	default_display('No page ' . $pageid . ' in this index (try <a href="https://www.biodiversitylibrary.org/page/'
+		. $pageid . '">BHL</a>)');
+}
+
+//----------------------------------------------------------------------------------------
 function main()
 {
 	$query = '';
@@ -2086,6 +2135,14 @@ function main()
 		{
 			display_map($query);
 		}
+		exit(0);
+	}
+
+	// A BHL page, by its PageID: the stable link to a page, which goes to wherever we
+	// show it
+	if (isset($_GET['page']))
+	{
+		resolve_page((int)$_GET['page']);
 		exit(0);
 	}
 

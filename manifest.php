@@ -218,6 +218,14 @@ function page_canvas_id($pageid)
 }
 
 //----------------------------------------------------------------------------------------
+// A page's stable link (index.php?page=, which redirects to wherever we show the page),
+// unlike a viewer URL, which depends on the manifest and the page's place in it
+function page_link($pageid)
+{
+	return site_url('?page=' . (int)$pageid);
+}
+
+//----------------------------------------------------------------------------------------
 // The page viewer showing a manifest (a URL relative to this site), at a page if a BHL
 // page URL is given, and searching inside it for $q if given
 function viewer_url($manifest, $page_url = '', $q = '')
@@ -253,6 +261,12 @@ function page_canvas($page, $seq, $sizes, $text = 'line')
 	}
 	$canvas->width  = $width;
 	$canvas->height = $height;
+	$canvas->homepage = array((object)array(
+		'id'     => page_link($pageid),
+		'type'   => 'Text',
+		'label'  => iiif_label('BHL page ' . $pageid),
+		'format' => 'text/html',
+	));
 
 	$base = $config['bhl_images'] . '/web/' . $sizes->barcode . '/' . $sizes->barcode . '_' . sprintf('%04d', $seq);
 

@@ -125,6 +125,12 @@ body {
 	text-decoration: none;
 }
 
+/* The "i" link to the article's (or item's) metadata page */
+.viewer-info {
+	font: italic bold 1.05em Georgia, "Times New Roman", serif;
+	line-height: 1;
+}
+
 .viewer-toggle[hidden] {
 	display: none;
 }
@@ -535,4 +541,62 @@ body {
 		width: 0;
 		max-width: none;
 	}
+}
+
+/* The stable link to the page showing (a canvas's homepage), below its button */
+.viewer-link {
+	position: fixed;
+	z-index: 20;
+	width: 26em;
+	max-width: calc(100vw - 1em);
+	box-sizing: border-box;
+	padding: 0.6em 0.75em;
+	background-color: var(--viewer-bar-bg);
+	color: var(--viewer-bar-text);
+	border: 1px solid var(--viewer-bar-border);
+	border-radius: 6px;
+	box-shadow: var(--viewer-shadow);
+}
+
+.viewer-link[hidden] {
+	display: none;
+}
+
+.viewer-link-label {
+	display: block;
+	font-weight: 600;
+	margin-bottom: 0.4em;
+}
+
+.viewer-link-row {
+	display: flex;
+	gap: 0.4em;
+}
+
+.viewer-link-url {
+	flex: 1 1 auto;
+	min-width: 0;
+	font: 0.95em ui-monospace, SFMono-Regular, Menlo, monospace;
+	color: inherit;
+	background-color: var(--viewer-page-bg);
+	border: 1px solid var(--viewer-bar-border);
+	border-radius: 4px;
+	padding: 0.25em 0.4em;
+}
+
+.viewer-link-copy {
+	flex: none;
+	font: inherit;
+	color: inherit;
+	background-color: var(--viewer-bar-bg);
+	border: 1px solid var(--viewer-bar-border);
+	border-radius: 4px;
+	padding: 0.2em 0.7em;
+	cursor: pointer;
+}
+
+.viewer-link-note {
+	margin: 0.5em 0 0;
+	font-size: 0.85em;
+	opacity: 0.75;
 }

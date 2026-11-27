@@ -58,6 +58,11 @@
 	var text_toggle    = document.getElementById('viewer-text-toggle');
 	var text_label     = document.getElementById('viewer-text-label');
 	var text_body      = document.getElementById('viewer-text-body');
+	var link_panel     = document.getElementById('viewer-link');
+	var link_toggle    = document.getElementById('viewer-link-toggle');
+	var link_label     = document.getElementById('viewer-link-label');
+	var link_url       = document.getElementById('viewer-link-url');
+	var link_copy      = document.getElementById('viewer-link-copy');
 
 	var pages   = [];   // { canvas, label, thumbnail, image, service, el, img, ... }
 	var ranges  = [];   // { label, first, last } as page indexes
@@ -688,6 +693,8 @@
 
 		history.replaceState(null, '', '#page=' + (index + 1));
 
+		show_link();
+
 		show_page_text();
 
 		if (in_iframe) {
@@ -697,6 +704,44 @@
 				label: page.label,
 				canvas: page.canvas
 			}, '*');
+		}
+	}
+
+	//------------------------------------------------------------------------------------
+	// A page's stable link: its canvas's web page (homepage), which on this site is
+	// ?page=PageID. The URL bar (#page=) is the page's place in this manifest, which
+	// differs between an article and its item.
+	function canvas_link(canvas) {
+		var homepage = as_array(canvas.homepage).filter(function (h) {
+			return h && h.id;
+		});
+		return homepage.length > 0 ? homepage[0].id : null;
+	}
+
+	// The link box shows the link of the page showing
+	function show_link() {
+		var page = pages[current];
+		if (!page) {
+			return;
+		}
+		link_label.textContent = 'Link to ' + (page.label ? 'page ' + page.label : 'this page');
+		link_url.value = page.link || '';
+		link_copy.disabled = !page.link;
+		link_copy.textContent = 'Copy';
+	}
+
+	function show_link_panel(show) {
+		link_panel.hidden = !show;
+		link_toggle.setAttribute('aria-expanded', show ? 'true' : 'false');
+		if (show) {
+			show_link();
+			// Below its button, kept on the screen
+			var box = link_toggle.getBoundingClientRect();
+			link_panel.style.top = (box.bottom + 6) + 'px';
+			var left = Math.min(box.left, window.innerWidth - link_panel.offsetWidth - 8);
+			link_panel.style.left = Math.max(8, left) + 'px';
+			link_url.focus();
+			link_url.select();
 		}
 	}
 
@@ -746,6 +791,7 @@
 				service: image.service,
 				state: 'none',
 				annotation_pages: as_array(canvas.annotations),
+				link: canvas_link(canvas),
 				timer: null,
 				loading: null
 			};
@@ -839,6 +885,10 @@
 
 		if (pages.some(function (page) { return page.annotation_pages.length > 0; })) {
 			text_toggle.hidden = false;
+		}
+
+		if (pages.some(function (page) { return page.link; })) {
+			link_toggle.hidden = false;
 		}
 
 		search_service = find_search_service(manifest);
@@ -1298,6 +1348,40 @@
 		}
 	});
 
+	link_toggle.addEventListener('click', function () {
+		show_link_panel(link_panel.hidden);
+	});
+
+	link_copy.addEventListener('click', function () {
+		var done = function () {
+			link_copy.textContent = 'Copied';
+		};
+		if (navigator.clipboard && window.isSecureContext) {
+			navigator.clipboard.writeText(link_url.value).then(done, function () {
+				link_url.select();
+			});
+		} else {
+			link_url.select();
+			if (document.execCommand('copy')) {
+				done();
+			}
+		}
+	});
+
+	// Closes on Escape, or a click elsewhere
+	document.addEventListener('keydown', function (event) {
+		if (event.key === 'Escape' && !link_panel.hidden) {
+			show_link_panel(false);
+			link_toggle.focus();
+		}
+	});
+
+	document.addEventListener('mousedown', function (event) {
+		if (!link_panel.hidden && !link_panel.contains(event.target) && !link_toggle.contains(event.target)) {
+			show_link_panel(false);
+		}
+	});
+
 	document.addEventListener('keydown', function (event) {
 		if (event.key === 'Escape' && narrow.matches) {
 			if (!thumbs.hidden) {
@@ -1344,6 +1428,33 @@
 		show_message('Give a IIIF manifest as ?manifest=, e.g. viewer.html?manifest=testsets/manifests/61794.json');
 		return;
 	}
+
+	// A manifest from this site (iiif.php?part=… or ?item=…) has a metadata page,
+	// ./?part=… or ./?item=…, which the "i" link goes to
+	(function () {
+		var info = document.getElementById('viewer-info');
+		var url;
+		try {
+			url = new URL(manifest_url, window.location.href);
+		} catch (e) {
+			return;
+		}
+		if (url.origin !== window.location.origin) {
+			return;
+		}
+		['part', 'item'].some(function (key) {
+			var id = url.searchParams.get(key);
+			if (id && /^\d+$/.test(id)) {
+				var what = key === 'part' ? 'article' : 'item';
+				info.href = './?' + key + '=' + id;
+				info.title = 'About this ' + what;
+				info.setAttribute('aria-label', 'About this ' + what);
+				info.hidden = false;
+				return true;
+			}
+			return false;
+		});
+	})();
 
 	fetch(manifest_url)
 		.then(function (response) {
