@@ -621,9 +621,71 @@
 			layer.appendChild(span);
 		});
 
+		var end = document.createElement('div');
+		end.className = 'viewer-text-end';
+		layer.appendChild(end);
+
 		page.text_el = layer;
 		page.el.appendChild(layer);
 	}
+
+	// Selecting text. Between the pieces of text the pointer is over the layer itself,
+	// and the browser puts the end of the selection at the layer's start, so everything
+	// above where the selection began flashes selected until the pointer reaches the next
+	// piece. As in PDF.js, an invisible box (.viewer-text-end) covers the layer while
+	// selecting, and is moved to just after (or before, going backwards) the piece the
+	// selection ends in, so over a gap the selection ends there instead.
+	function text_end(layer) {
+		return layer.querySelector(':scope > .viewer-text-end');
+	}
+
+	function end_selecting() {
+		Array.prototype.forEach.call(scroller.querySelectorAll('.viewer-text.selecting'), function (layer) {
+			layer.classList.remove('selecting');
+			layer.appendChild(text_end(layer));
+		});
+	}
+
+	scroller.addEventListener('pointerdown', function (event) {
+		var layer = event.target.closest && event.target.closest('.viewer-text');
+		if (layer) {
+			layer.classList.add('selecting');
+		}
+	});
+
+	document.addEventListener('pointerup', end_selecting);
+	window.addEventListener('blur', end_selecting);
+
+	document.addEventListener('selectionchange', function () {
+		var selection = window.getSelection();
+		if (!selection || selection.rangeCount === 0 || !scroller.querySelector('.viewer-text.selecting')) {
+			return;
+		}
+		var range = selection.getRangeAt(0);
+
+		// Selecting across pages: each page the selection reaches
+		Array.prototype.forEach.call(scroller.querySelectorAll('.viewer-text'), function (layer) {
+			if (range.intersectsNode(layer)) {
+				layer.classList.add('selecting');
+			}
+		});
+
+		// The piece of text the moving end (focus) of the selection is in
+		var node = selection.focusNode;
+		var span = node && (node.nodeType === Node.TEXT_NODE ? node.parentNode : null);
+		if (!span || span.tagName !== 'SPAN' || !span.parentNode.classList.contains('viewer-text')) {
+			return;
+		}
+		var backwards = range.startContainer === selection.focusNode && range.startOffset === selection.focusOffset;
+		var layer = span.parentNode;
+		var end = text_end(layer);
+		// Going forwards and at the very start of a piece, the selection stops before it
+		var before = backwards || selection.focusOffset === 0;
+		var next = before ? span : span.nextSibling;
+		if (next !== end && end.nextSibling !== next) {
+			layer.insertBefore(end, next);
+		}
+	});
 
 	// Copy what is selected as text, with a space or line break after each piece that
 	// is selected to its end (see text_separator()). The page has just the pieces of

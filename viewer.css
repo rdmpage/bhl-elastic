@@ -265,16 +265,32 @@ body {
 	inset: 0;
 	user-select: text;
 	-webkit-user-select: text;
+	isolation: isolate;
 }
 
 .viewer-text span {
 	position: absolute;
+	z-index: 1;
 	white-space: pre;
 	line-height: 1;
 	font-family: sans-serif;
 	color: transparent;
 	transform-origin: 0 0;
 	cursor: text;
+}
+
+/* Under the text, and only covering the layer while selecting (see viewer.js), so the
+   gaps between pieces of text do not select from the top of the page */
+.viewer-text-end {
+	position: absolute;
+	inset: 100% 0 0 0;
+	user-select: none;
+	-webkit-user-select: none;
+	cursor: default;
+}
+
+.viewer-text.selecting .viewer-text-end {
+	top: 0;
 }
 
 .viewer-text span::selection {
